@@ -1,6 +1,6 @@
 <template>
   <div id="app" class="por" v-loading="loading">
-    <tu-book
+    <Book
       :text="message"
       :width="width"
       :height="height"
@@ -11,19 +11,13 @@
       :fontSize="setting.fontSize"
       :lineHeight="setting.lineHeight"
       :percent="defaultPercent"
-      :single="single"
-      @pageChange="pageChange"
-      @mousedown.native="middleClick"
-      @mouseup.native="middleClick"
-      ref="book"
-      :style="`z-index: 1;`"
     />
     <div
       v-show="showSetting"
       :style="`z-index: 2`"
       @click="toggleSetting"
       class="middle-cover poa"></div>
-    <setting
+    <!-- <setting
       v-show="showSetting"
       :style="`z-index: 3;`"
       :position="position"
@@ -33,7 +27,7 @@
       :total="total"
       @dataChange="settingChange"
       @pageChange="changePage"
-    />
+    /> -->
     <local
       v-if="showLocal"
       :style="`z-index: 4;`"
@@ -46,6 +40,7 @@
 import axios from 'axios'
 import Setting from './components/Setting'
 import Local from './components/Local'
+import Book from './components/Book'
 import localforage from 'localforage'
 const defaultSetting = {
   fontFamily: 'Microsoft YaHei',
@@ -58,7 +53,8 @@ export default {
   name: 'App',
   components: {
     Setting,
-    Local
+    Local,
+    Book
   },
   data() {
     return {
@@ -91,7 +87,7 @@ export default {
   },
   methods: {
     watchClientSize() {
-      window.addEventListener('resize', this._.debounce(this.settingSize, 1000))
+      window.addEventListener('resize', this._.debounce(this.settingSize, 500))
     },
     settingSize() {
       const s = window.getComputedStyle(document.body)
@@ -209,6 +205,7 @@ export default {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   color: #2c3e50;
+  background-color: seashell;
   .middle-cover {
     width: 100%;
     height: 100%;

@@ -16,6 +16,7 @@ import ui from 'tiny-utils.js/UI'
 import localforage from 'localforage'
 
 import debounce from 'lodash/debounce'
+
 window.localforage = localforage
 
 Vue.use(Row)
