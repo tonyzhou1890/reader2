@@ -46,12 +46,11 @@
 import axios from 'axios'
 import Setting from './components/Setting'
 import Local from './components/Local'
-import { storage } from '@/utils/storage'
+import localforage from 'localforage'
 const defaultSetting = {
   fontFamily: 'Microsoft YaHei',
   fontSize: 16,
   lineHeight: 24,
-  padding: 25,
   color: '#333',
   background: '#fff5ee'
 }
@@ -83,14 +82,6 @@ export default {
     }
   },
   computed: {
-    single() {
-      let temp = (this.width && this.height) || false
-      temp = this.width < this.height
-      return temp
-    },
-    position() {
-      return this.width > 500 ? 'top' : 'bottom'
-    }
   },
   created() {
     this.settingSize()
@@ -111,7 +102,6 @@ export default {
       this.total = data.total
       this.page = data.page
       if (this.address || this.local) {
-        this.setProcess(this.address || this.local, this.page / this.total * 100)
       }
     },
     resolveUrl() {
@@ -140,7 +130,7 @@ export default {
         .then(res => {
           this.message = res.data
           this.address = url
-          this.getProcess(this.address)
+          // this.getProcess(this.address)
           this.loading = false
         })
         .catch(e => {
@@ -181,7 +171,7 @@ export default {
       this.toggleSetting()
     },
     storeSetting() {
-      storage('setting', this.setting)
+      localforage.setItem('setting', this.setting)
         .then(res => {})
         .catch(e => {
           const m = JSON.parse(e.message)
@@ -200,32 +190,13 @@ export default {
         return
       }
       const s = localforage.getItem('setting')
-      if (!s) {
-      } else {
-        this.setting = Object.assign(this.setting, JSON.parse(s))
+      if (s) {
+        this.setting = s
       }
-    },
-    setProcess(key, val) {
-      storage(key, val)
-        .then(res => {})
-        .catch(e => {
-          const m = JSON.parse(e)
-          this.$message({
-            type: 'error',
-            message: m.message
-          })
-        })
-    },
-    getProcess(key) {
-      if (!window.localStorage || window.localStorage.getItem(key) === null) {
-        return
-      }
-      this.defaultPercent = Number(localforage.getItem(key))
     },
     getLocalData(e) {
       this.message = e.value
       this.local = e.key
-      this.getProcess(this.local)
       this.showLocal = false
     }
   }
