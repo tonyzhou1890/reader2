@@ -62,6 +62,14 @@
 import { measureChars, calcBookSize, supportFamily } from '@/utils/utils'
 import { bookSetting, appSetting } from '@/utils/setting'
 let { defaultPageSize, defaultPagePadding, limit, bookSize, pageSize, pagePadding, menuWidth } = bookSetting
+// 不需要响应式，并且量比较大的数据放到 _data 里
+let _data = {
+  cacheText: '', // 缓存文本
+  measures: {}, // 测量的字符
+  textArray: [], // 文本数组
+  minCharWidth: 1000 // 最小字符宽度
+}
+window._data = _data
 // let _calcBookSize = debounce(calcBookSize, 100)
 export default {
   name: 'Book',
@@ -89,7 +97,11 @@ export default {
       required: true
     },
     fontSize: {
-      type: String,
+      type: Number,
+      required: true
+    },
+    lineHeight: {
+      type: Number,
       required: true
     },
     fontFamily: {
@@ -108,10 +120,7 @@ export default {
       menuWidth, // 菜单溢出宽度
       full: false,
       single: false,
-      loading: false,
-      cacheText: '',  // 缓存文本
-      measures: {}, // 测量的字符
-      textArray: [],  // 文本数组
+      loading: false
     }
   },
   computed: {
@@ -163,10 +172,15 @@ export default {
       this.setTextCtx(this.ctxOneText)
       this.loading = true
       // 测量字符
-      if (this.cacheText !== this.text) {
-        let res = measureChars(this.text, this.ctxOneText)
-        this.measures = res.measures
-        this.textArray = res.textArray
+      if (_data.cacheText !== this.text) {
+        let param = {
+          text: this.text,
+          ctx: this.ctxOneText
+        }
+        let res = measureChars(param)
+        _data.measures = res.measures
+        _data.textArray = res.textArray
+        _data.minCharWidth = res.minCharWidth
       }
     },
     // 设置内容ctx样式

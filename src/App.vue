@@ -1,6 +1,7 @@
 <template>
   <div id="app" class="por" v-loading="loading">
     <Book
+      :style="`z-index: 1`"
       :text="message"
       :width="width"
       :height="height"
@@ -41,8 +42,9 @@ import Setting from './components/Setting'
 import Local from './components/Local'
 import Book from './components/Book'
 import localforage from 'localforage'
-import { bookSetting } from '@/utils/setting'
+import { bookSetting, appSetting } from '@/utils/setting'
 let { fontFamily, fontSize, lineHeight, color, background } = bookSetting
+let { title } = appSetting
 const defaultSetting = {
   fontFamily,
   fontSize,
@@ -61,7 +63,7 @@ export default {
     return {
       width: null,
       height: null,
-      message: 'reader',
+      message: title,
       total: null,
       page: null,
       defaultPercent: null,
@@ -188,7 +190,7 @@ export default {
       }
       const s = localforage.getItem('setting')
       if (s) {
-        this.setting = s
+        this.setting = Object.assign(this.setting, s)
       }
     },
     getLocalData(e) {

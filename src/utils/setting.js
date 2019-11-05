@@ -9,8 +9,8 @@ export const bookSetting = {
   pageSize: [0, 0], // 纸张尺寸
   pagePadding: [0, 0], // 纸张边距
   menuWidth: 20, // 菜单溢出宽度
-  prePunctuation: "([{·‘“〈《「『【〔〖（．［｛￡￥", // 前置标点
-  postPunctuation: "!),.:;?]}¨·ˇˉ―‖’”…∶、。〃々〉》」』】〕〗！＂＇），．：；？］｀｜｝～￠",  // 后置标点
+  prePunctuation: '([{·‘“〈《「『【〔〖（．［｛￡￥', // 前置标点
+  postPunctuation: '!),.:;?]}¨·ˇˉ―‖’”…∶、。〃々〉》」』】〕〗！＂＇），．：；？］｀｜｝～￠', // 后置标点
   breakMaxChars: 3, // 提前断行最大字符数
   fontFamily: 'Microsoft YaHei',
   fontSize: 16,
