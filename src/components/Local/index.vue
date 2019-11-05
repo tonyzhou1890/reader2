@@ -26,7 +26,7 @@ function getFile(path) {
     reader.onerror = (e) => {
       reject(e)
     }
-    reader.readAsText(path, 'gb2312')
+    reader.readAsText(path, 'utf8')
   })
 }
 export default {

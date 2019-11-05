@@ -6,7 +6,6 @@
       :height="height"
       :color="setting.color"
       :background="setting.background"
-      :pagePadding="setting.padding"
       :fontFamily="setting.fontFamily"
       :fontSize="setting.fontSize"
       :lineHeight="setting.lineHeight"
@@ -42,12 +41,14 @@ import Setting from './components/Setting'
 import Local from './components/Local'
 import Book from './components/Book'
 import localforage from 'localforage'
+import { bookSetting } from '@/utils/setting'
+let { fontFamily, fontSize, lineHeight, color, background } = bookSetting
 const defaultSetting = {
-  fontFamily: 'Microsoft YaHei',
-  fontSize: 16,
-  lineHeight: 24,
-  color: '#333',
-  background: '#fff5ee'
+  fontFamily,
+  fontSize,
+  lineHeight,
+  color,
+  background
 }
 export default {
   name: 'App',

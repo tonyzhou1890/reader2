@@ -1,17 +1,53 @@
+import { bookSetting } from '@/utils/setting'
+let { prePunctuation, postPunctuation } = bookSetting
+/**
+ * 测量字符
+ * @param {Object} param // 参数对象
+ * param: {
+ *    text: '', // 整个文本
+ *    ctx: {},  // 绘图上下文
+ * }
+ * 返回值：{
+ *    measures: {
+ *      'a': {
+ *        width: 12,
+ *        height: 12
+ *      }
+ *    },
+ *    textArray: ['a', 'b']
+ * }
+ */
+export function measureChars(param) {
+  // 将文本转成数组，防止四字节字符问题
+  let textArray = Array.from(param.text)
+  // 加上额外需要测量的字符
+  let tempArr = textArray.concat([...prePunctuation, ...postPunctuation, '-'])
+  // 去重
+  tempArr = [...new Set(tempArr)]
+  let measures = {}
+  let len = tempArr.length
+  // for 循环效率比 map 之类的遍历器高
+  for(let i = 0; i < len; i++) {
+    mesaures[tempArr[i]] = ctx.measureText(tempArr[i])
+  }
+  return {
+    textArray,
+    measures
+  }
+}
+
 /**
  * 将文本分配到每一页
  * @param {Object} param 参数对象
  * param {
- *    text: '', // 文本
- *    ctx: {},  // canvas 绘图上下文
+ *    text: [], // 文本
  *    width: null,  // 版心宽度
  *    height: null, // 版心高度
  *    fontSize: null, // 字体大小
  *    lineHeight: null, // 行高：字体大小的倍数，最小1
  *    measures: { // 字符尺寸表
  *      'a': {
- *        width: 12,
- *        height: 12
+ *        width: 12
  *      }
  *    }
  * }
@@ -28,7 +64,20 @@
  * }
  */
 export function textToPage(param) {
+  // 参数预处理
+  let _params = {...param}
+  _params.lineHeight = param.fontSize * param.lineHeight
+  _params.rows = Math.floor(height / _params.lineHeight)
+  let pages = [], // 存储每页信息
+    len = _params.text.length,
+    page = 0,
+    startIndex = 0,
+    row = 0,
+    rowChars = [],
+    rowWidth = 0
+  for(let i = 0; i < len; i++) {
 
+  }
 }
 
 /**
@@ -65,8 +114,7 @@ export function renderPage(param) {
  *    lineHeight: null, // 行高：字体大小的倍数，最小1
  *    measures: { // 字符尺寸表
  *      'a': {
- *        width: 12,
- *        height: 12
+ *        width: 12
  *      }
  *    }
  * }
@@ -140,4 +188,17 @@ export function calcBookSize(param) {
   ]
 
   return res
+}
+
+/**
+ * 字体支持
+ * @param {Object} ctx 绘图上下文
+ * @return {Boolean} true/false
+ */
+export function supportFamily(ctx) {
+  if (ctx.measureText('一').width) {
+    return true
+  } else {
+    return false
+  }
 }
