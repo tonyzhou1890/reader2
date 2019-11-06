@@ -92,10 +92,14 @@ export function textToPage(param) {
   let row = 0
   let rowChars = []
   let rowWidth = 0
+  let curChar = ''
+  let tempRowWidth = 0
+  let breakMaxChars = bookSetting.breakMaxChars < 0 ? 0 : bookSetting.breakMaxChars
+  let backCharIndex = false  // 回溯索引
   // 遍历字符分行分页
   for (let i = 0; i < len; i++) {
     // 当前字符
-    let curChar = _params.text[i]
+    curChar = _params.text[i]
     // 如果是新页，初始化本页数据
     if (row === 0 && rowWidth === 0) {
       pages[page] = {
@@ -112,40 +116,38 @@ export function textToPage(param) {
     }
     // 如果是换行符，结束此行
     if (curChar === '\r' || curChar === '\n') {
+      rowChars[rowChars.length] = curChar
       // 如果这个字符是\r，下一个是\n，i+1
       if (curChar === '\r' && _params.text[i + 1] === '\n') {
+        rowChars[rowChars.length] = _params.text[i + 1]
         i++
       }
       endRow(i)
     } else {
-      let tempRowWidth = rowWidth + _params.measures[curChar].width
+      tempRowWidth = rowWidth + _params.measures[curChar].width
       /**
        * 普通字符（包括其余各种符号）处理
-       * 1 有剩余空间
+       * 1 有剩余空间(包括0)
        *    1.1 行首后置符号
        *      1.1.1 上一行最后一个字符（前一个字符）为换行符，不回溯换行
        *      1.1.2 最大回溯字符数以内，回溯换行
        *      1.1.3 超过最大回溯字符数，不回溯换行
+       *      1.1.4 判断：一行第一个字符，并且是后置字符，并且前一个字符有值且非换行符，并且回溯字符数以内有非后置字符
        *    1.2 行尾前置符号
        *      1.2.1 下一个字符为换行字符，不提前换行
        *      1.2.2 剩余空间小于下一个非换行字符，提前换行
+       *      1.2.3 回溯字符数以内遇到非前置字符，非前置字符后提前换行
+       *      1.2.4 判断：下一个字符非换行字符，且剩余空间小于下一个字符，然后函数回溯
        *    1.3 其余情况，常规处理
        * 2 没有剩余空间，换行
        */
-      // 如果确定不是最后一个字符（剩余空间大于等于最大字符宽度），则改变当前行宽，此行添加当前字符
-      if (width - tempRowWidth >= _params.maxCharWidth) {
-        rowWidth = tempRowWidth
-        rowChars[rowChars.length] = curChar
-      } else if (width - tempRowWidth < _params.minCharWidth) {
-        // 如果确定是最后一个字符（剩余空间小于最小字符宽度），检查是否是前置符号，如果是，提前换行（i--），否则常规处理
-        if (prePunctuation.includes(curChar)) {
-          i--
-          endRow(i)
-        } else {
-          rowWidth = tempRowWidth
+      if (_params.width - tempRowWidth >= 0) {
+        if (!rowWidth && postPunctuation.includes(curChar) && _params.text[i - 1] && _params.text[i - 1] !== '\r' && _params.text[i - 1] !== '\n' && (backCharIndex = validPostBack(i))) {
+
         }
       } else {
-        // 如果不确定是否是最后一个字符，需要预检下一个字符
+        i--
+        endRow(i)
       }
     }
   }
@@ -161,7 +163,7 @@ export function textToPage(param) {
     rowChars = []
     rowWidth = 0
     // 如果达到最大行，结束此页
-    if (row > _params.rowNum) {
+    if (row >= _params.rowNum) {
       endPage(index)
     }
   }
@@ -174,6 +176,24 @@ export function textToPage(param) {
     pages.rows = rows
     page++
     rows = []
+  }
+
+  /**
+   * 行首前置字符回溯是否有效
+   */
+  function validPostBack(i) {
+    // 如果只回溯一个，直接返回i-2
+    if (bookSetting.breakMaxChars) {
+      return i - 2
+    }
+    // 否则深度回溯
+    let start = i - 1 - bookSetting.breakMaxChars - 1
+    let prevRow = null
+    if (!row) {
+      prevRow = pages[page - 1].rows[_params.rowNum - 1]
+      start = prevRow.startIndex < start ? prevRow.startIndex : start
+      
+    }
   }
 }
 
