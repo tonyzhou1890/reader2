@@ -59,7 +59,7 @@
 
 <script>
 // import debounce from 'lodash/debounce'
-import { measureChars, calcBookSize, supportFamily } from '@/utils/utils'
+import { measureChars, textToPage, calcBookSize, supportFamily } from '@/utils/utils'
 import { bookSetting, appSetting } from '@/utils/setting'
 let { defaultPageSize, defaultPagePadding, limit, bookSize, pageSize, pagePadding, menuWidth } = bookSetting
 // 不需要响应式，并且量比较大的数据放到 _data 里
@@ -67,7 +67,7 @@ let _data = {
   cacheText: '', // 缓存文本
   measures: {}, // 测量的字符
   textArray: [], // 文本数组
-  minCharWidth: 1000 // 最小字符宽度
+  pages: [] // 分页信息
 }
 window._data = _data
 // let _calcBookSize = debounce(calcBookSize, 100)
@@ -124,9 +124,15 @@ export default {
     }
   },
   computed: {
+    // 可视区宽高
     windowSize() {
       let { width, height } = this
       return { width, height }
+    },
+    // 文本需要重新计算的相关属性
+    propertiesToCalc() {
+      let { text, fontSize, lineHeight, fontFamily } = this
+      return { text, fontSize, lineHeight, fontFamily }
     }
   },
   created() {
@@ -144,6 +150,12 @@ export default {
         this.calcBookSize()
       },
       immediate: true
+    },
+    // 监听需要重新计算的属性
+    propertiesToCalc: {
+      handler() {
+        this.textToPage()
+      }
     }
   },
   methods: {
@@ -159,7 +171,7 @@ export default {
         height: this.height,
         menuWidth: this.menuWidth
       })
-      if (res.single === this.single && res.full === this.full && res.bookSize[0] === this.bookSize[0]) return
+      if (res.single === this.single && res.full === this.full && res.bookSize[0] === this.bookSize[0] && res.bookSize[1] === this.bookSize[1]) return
       ['full', 'single', 'pageSize', 'bookSize', 'pagePadding'].map(key => {
         _this[key] = res[key]
       })
@@ -171,17 +183,29 @@ export default {
 
       this.setTextCtx(this.ctxOneText)
       this.loading = true
+      let param = {}
       // 测量字符
       if (_data.cacheText !== this.text) {
-        let param = {
+        param = {
           text: this.text,
           ctx: this.ctxOneText
         }
         let res = measureChars(param)
         _data.measures = res.measures
         _data.textArray = res.textArray
-        _data.minCharWidth = res.minCharWidth
+        _data.cacheText = this.text
       }
+      // 计算分页
+      param = {
+        text: _data.textArray,
+        width: this.pageSize[0] - this.pagePadding[0] * 2,
+        height: this.pageSize[1] - this.pagePadding[1] * 2,
+        fontSize: this.fontSize,
+        lineHeight: this.lineHeight,
+        measures: _data.measures
+      }
+      _data.pages = textToPage(param)
+      this.loading = false
     },
     // 设置内容ctx样式
     setTextCtx(ctx) {

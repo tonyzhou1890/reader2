@@ -29,24 +29,19 @@ export function measureChars(param) {
   let len = tempArr.length
   // 最小字符宽度，后面用来确定当前字符是否是一行末尾的字符
   let minCharWidth = 1000
-  let maxCharWidth = 0
   // for 循环效率比 map 之类的遍历器高
   for (let i = 0; i < len; i++) {
     measures[tempArr[i]] = param.ctx.measureText(tempArr[i])
     minCharWidth = measures[tempArr[i]].width < minCharWidth ? measures[tempArr[i]].width : minCharWidth
-    maxCharWidth = measures[tempArr[i]].width > maxCharWidth ? measures[tempArr[i]].width : maxCharWidth
   }
   // tab符特殊处理
   if (measures['\t']) {
     measures['\t'].width = measures['阅'].width * 2
-    maxCharWidth = measures['\t'].width > maxCharWidth ? measures['\t'].width : maxCharWidth
   }
   console.log('measureChars:', Date.now() - s)
   return {
     textArray,
-    measures,
-    minCharWidth,
-    maxCharWidth
+    measures
   }
 }
 
@@ -63,26 +58,23 @@ export function measureChars(param) {
  *      'a': {
  *        width: 12
  *      }
- *    },
- *    minCharWidth: 1000
+ *    }
  * }
  * 返回值：
- * {
- *    pages: [
- *      {
- *        startIndex: 0,
- *        endIndex: 100,
- *        page: 1
- *      }
- *    ],
- *    total: 12
- * }
+ * pages: [
+ *    {
+ *      startIndex: 0,
+ *      endIndex: 100,
+ *      page: 1
+ *    }
+ *  ]
  */
 export function textToPage(param) {
+  let s = Date.now()
   // 参数预处理
   let _params = {...param}
   _params.lineHeight = param.fontSize * param.lineHeight
-  _params.rowNum = Math.floor(height / _params.lineHeight)
+  _params.rowNum = Math.floor(param.height / _params.lineHeight)
   _params.referenceChar = _params.measures['阅']
 
   let pages = [] // 存储每页信息
@@ -95,7 +87,7 @@ export function textToPage(param) {
   let curChar = ''
   let tempRowWidth = 0
   let breakMaxChars = bookSetting.breakMaxChars < 0 ? 0 : bookSetting.breakMaxChars
-  let backCharIndex = false  // 回溯索引
+  let backCharInfo = false // 回溯信息
   // 遍历字符分行分页
   for (let i = 0; i < len; i++) {
     // 当前字符
@@ -122,6 +114,7 @@ export function textToPage(param) {
         rowChars[rowChars.length] = _params.text[i + 1]
         i++
       }
+      rows[row].completed = false
       endRow(i)
     } else {
       tempRowWidth = rowWidth + _params.measures[curChar].width
@@ -138,12 +131,35 @@ export function textToPage(param) {
        *      1.2.2 剩余空间小于下一个非换行字符，提前换行
        *      1.2.3 回溯字符数以内遇到非前置字符，非前置字符后提前换行
        *      1.2.4 判断：下一个字符非换行字符，且剩余空间小于下一个字符，然后函数回溯
-       *    1.3 其余情况，常规处理
+       *    1.3 其余情况，常规处理--改变当前行宽度，当前字符加入当前行
        * 2 没有剩余空间，换行
        */
       if (_params.width - tempRowWidth >= 0) {
-        if (!rowWidth && postPunctuation.includes(curChar) && _params.text[i - 1] && _params.text[i - 1] !== '\r' && _params.text[i - 1] !== '\n' && (backCharIndex = validPostBack(i))) {
-
+        // 行首后置符号
+        if (
+          !rowWidth &&
+          postPunctuation.includes(curChar) &&
+          _params.text[i - 1] &&
+          _params.text[i - 1] !== '\r' &&
+          _params.text[i - 1] !== '\n' &&
+          (backCharInfo = validPostBack(i))
+        ) {
+          backCharInfo.prevRow.endIndex = backCharInfo.endIndex
+          backCharInfo.prevRow.chars.splice(backCharInfo.endIndex - backCharInfo.prevRow.startIndex + 1)
+          i = backCharInfo.endIndex
+        } else if ( // 行尾前置符号
+          prePunctuation.includes(curChar) &&
+          _params.text[i - 1] &&
+          _params.text[i - 1] !== '\r' &&
+          _params.text[i - 1] !== '\n' &&
+          _params.width - tempRowWidth < _params.measures[_params.text[i - 1]].width &&
+          (backCharInfo = validPreBack(i))
+        ) {
+          rowChars.splice(backCharInfo.endIndex - rows[row].startIndex + 1)
+          endRow(backCharInfo.endIndex)
+        } else { // 其余情况
+          rowWidth = tempRowWidth
+          rowChars[rowChars.length] = curChar
         }
       } else {
         i--
@@ -151,13 +167,21 @@ export function textToPage(param) {
       }
     }
   }
+  // 遍历结束后
+  // 检查最后一个字符是否为非换行符，如果是非换行符，需要结束行和页
+  if (_params.text[len - 1] !== '\r' && _params.text[len - 1] !== '\n') {
+    endRow(len - 1)
+    endPage(len - 1)
+  }
+  console.log('textToPage:', Date.now() - s)
+  // 返回结果
+  return pages
 
   /**
    * 结束此行
    */
   function endRow(index) {
     rows[row].endIndex = index
-    rows[row].completed = false
     rows[row].chars = rowChars
     row++
     rowChars = []
@@ -173,27 +197,63 @@ export function textToPage(param) {
    */
   function endPage(index) {
     pages[page].endIndex = index
-    pages.rows = rows
+    pages[page].rows = rows
     page++
     rows = []
+    row = 0
   }
 
   /**
-   * 行首前置字符回溯是否有效
+   * 行首后置字符回溯是否有效
    */
   function validPostBack(i) {
     // 如果只回溯一个，直接返回i-2
-    if (bookSetting.breakMaxChars) {
+    if (breakMaxChars === 0) {
       return i - 2
     }
     // 否则深度回溯
-    let start = i - 1 - bookSetting.breakMaxChars - 1
+    let start = i - 1 - breakMaxChars - 1
     let prevRow = null
+    let index = null
+    // 上一行在前页
     if (!row) {
       prevRow = pages[page - 1].rows[_params.rowNum - 1]
-      start = prevRow.startIndex < start ? prevRow.startIndex : start
-      
+    } else {
+      // 上一行不在前页
+      prevRow = rows[row - 1]
     }
+    start = prevRow.startIndex < start ? prevRow.startIndex : start
+    for (index = i - 1; index > start; index--) {
+      if (!postPunctuation.includes(_params.text[index])) {
+        return {
+          prevRow,
+          endIndex: index - 1
+        }
+      }
+    }
+    return false
+  }
+
+  /**
+   * 行尾前置字符回溯是否有效
+   */
+  function validPreBack(i) {
+    // 如果不回溯，直接返回i-1
+    if (breakMaxChars === 0) {
+      return i - 1
+    }
+    // 否则深度回溯
+    let start = i - 1 - breakMaxChars
+    let index = null
+    start = rows[row].startIndex < start ? rows[row].startIndex : start
+    for (index = i - 1; index > start; index--) {
+      if (!prePunctuation.includes(_params.text[index])) {
+        return {
+          endIndex: index
+        }
+      }
+    }
+    return false
   }
 }
 

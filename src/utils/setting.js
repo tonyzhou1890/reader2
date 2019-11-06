@@ -3,7 +3,7 @@
  */
 export const bookSetting = {
   defaultPageSize: [210, 297],
-  defaultPagePadding: [30, 25],
+  defaultPagePadding: [25, 30],
   limit: [400, 600], // 切换显示模式的阈值
   bookSize: [0, 0], // 书籍尺寸
   pageSize: [0, 0], // 纸张尺寸
