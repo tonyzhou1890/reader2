@@ -6,13 +6,12 @@ import App from './App'
 
 import 'normalize.css/normalize.css' // A modern alternative to CSS resets
 
-import '@/styles/index.scss' // global css
+import '@/styles/index.less' // global css
 import './icons' // icon
 
 import '../theme/index.css'
 import { Row, Col, Button, Input, Select, Option, Upload, Slider, ColorPicker, Message, MessageBox, Loading } from 'element-ui'
 
-import ui from 'tiny-utils.js/UI'
 import localforage from 'localforage'
 
 import debounce from 'lodash/debounce'
@@ -33,10 +32,6 @@ Vue.use(Loading.directive)
 Vue.prototype.$loading = Loading.service
 Vue.prototype.$msgbox = MessageBox
 Vue.prototype.$message = Message
-
-Object.keys(ui).map(item => {
-  Vue.component(item, ui[item])
-})
 
 Vue.prototype._ = {
   debounce

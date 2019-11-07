@@ -237,8 +237,8 @@ export default {
 }
 </script>
 
-<style lang="scss" scoped>
-$outline: 5px solid #444;
+<style lang="less" scoped>
+@outline: 5px solid #444;
 .setting-container {
   width: 100%;
   max-width: 500px;
@@ -290,12 +290,12 @@ $outline: 5px solid #444;
             display: inline-block;
             cursor: pointer;
             &.active {
-              outline: $outline;
+              outline: @outline;
             }
           }
           .color-picker {
             &.active {
-              outline: $outline;
+              outline: @outline;
             }
           }
         }
@@ -313,7 +313,7 @@ $outline: 5px solid #444;
 }
 </style>
 
-<style lang="scss">
+<style lang="less">
 .setting-container {
   .setting-content {
     .setting-item {

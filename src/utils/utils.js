@@ -23,20 +23,27 @@ export function measureChars(param) {
   let textArray = Array.from(param.text)
   // 加上额外需要测量的字符
   let tempArr = textArray.concat([...prePunctuation, ...postPunctuation, '-', '阅'])
+  console.log('tempArr:', Date.now() - s)
   // 去重
   tempArr = [...new Set(tempArr)]
+  console.log('Set:', Date.now() - s)
   let measures = {}
   let len = tempArr.length
-  // 最小字符宽度，后面用来确定当前字符是否是一行末尾的字符
-  let minCharWidth = 1000
   // for 循环效率比 map 之类的遍历器高
   for (let i = 0; i < len; i++) {
-    measures[tempArr[i]] = param.ctx.measureText(tempArr[i])
-    minCharWidth = measures[tempArr[i]].width < minCharWidth ? measures[tempArr[i]].width : minCharWidth
+    measures[tempArr[i]] = {
+      width: param.ctx.measureText(tempArr[i]).width
+    }
   }
-  // tab符特殊处理
+  // tab符、换行符特殊处理
   if (measures['\t']) {
     measures['\t'].width = measures['阅'].width * 2
+  }
+  if (measures['\r']) {
+    measures['\r'].width = 0
+  }
+  if (measures['\n']) {
+    measures['\n'].width = 0
   }
   console.log('measureChars:', Date.now() - s)
   return {
@@ -65,7 +72,13 @@ export function measureChars(param) {
  *    {
  *      startIndex: 0,
  *      endIndex: 100,
- *      page: 1
+ *      page: 1,
+ *      rows: [{
+ *        startIndex: 0,
+ *        endIndex: 10,
+ *        completed: true,
+ *        chars: ['a', 'b']
+ *      }]
  *    }
  *  ]
  */
@@ -280,9 +293,12 @@ export function renderPage(param) {
  * 计算页面排版
  * @param {Object} param 参数对象
  * param: {
- *    text: '', // 全部文本
- *    startIndex: 0,  // 开始下标
- *    endIndex: 100,  // 结束下标
+ *    rows: [{  // 各行信息
+ *      startIndex: 0,
+ *      endIndex: 10,
+ *      completed: true,
+ *      chars: ['a', 'b']
+ *    }]
  *    width: null,  // 页面宽度
  *    height: null, // 页面高度
  *    paddingLeft: null,  // 左右边距
@@ -295,9 +311,78 @@ export function renderPage(param) {
  *      }
  *    }
  * }
+ * @returns {Array}
+ * 返回值：[
+ *  {
+ *    startIndex: 0,
+ *    endIndex: 10,
+ *    completed: true,
+ *    calculated: true,
+ *    chars: [
+ *      {
+ *        char: 'a',
+ *        position: [100, 100, 116, 116], // 字符绘制位置
+ *      }
+ *    ],
+ *    charsSpace: [100, 100, 300, 116], // 此行字符占据的空间，除了换行，基本占据整行
+ *    rowSpace: [100, 100, 300, 124], // 此行占据的空间，都是占据整行
+ *  }
+ * ]
  */
 export function layout(param) {
+  // 如果已经计算过了，直接返回
+  if (param.rows[0] && param.rows[0].calculated) return param.rows
 
+  const _params = {...param}
+  _params.lineHeight = param.fontSize * param.lineHeight
+  _params.lineWidth = param.width - param.paddingLeft * 2
+  _params.rows = JSON.parse(JSON.stringify(_params.rows))
+  _params.rows.map((item, row) => {
+    let letterSpacing = 0
+    let tempRowWidth = 0
+    // 先计算rowSpace，后面计算字符位置需要用到
+    item.rowSpace = [
+      _params.paddingLeft,
+      _params.paddingTop + row * _params.lineHeight,
+      _params.paddingLeft + _params.lineWidth,
+      _params.paddingTop + row * (_params.lineHeight + 1)
+    ]
+    // 如果是完整的一行，需要计算字间距，
+    if (item.completed) {
+      let charsWidth = 0
+      item.chars.map(chara => {
+        charsWidth += _params.measures[chara].width
+      })
+      letterSpacing = (_params.lineWidth - charsWidth) / (item.chars.length - 1)
+    }
+    // 计算字符位置
+    item.chars.map((chara, index) => {
+      let position = [
+        _params.paddingLeft + tempRowWidth,
+        item.rowSpace[1],
+        _params.paddingLeft + tempRowWidth + _params.measures[chara].width,
+        item.rowSpace[1] + _params.fontSize
+      ]
+      // 直接将原来的字符替换成对象
+      item.chars[index] = {
+        char: chara,
+        position
+      }
+      // 更新 tempRowWidth
+      tempRowWidth += _params.measures[chara].width + letterSpacing
+    })
+    // 计算 charsSpace
+    item.charsSpace = [
+      item.rowSpace[0],
+      item.rowSpace[1],
+      item.chars[item.chars.length - 1].position[2],
+      item.chars[item.chars.length - 1].position[3]
+    ]
+    // 标记此行已经计算过
+    item.calculated = true
+  })
+
+  return _params.rows
 }
 
 /**

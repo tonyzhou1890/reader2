@@ -59,7 +59,7 @@
 
 <script>
 // import debounce from 'lodash/debounce'
-import { measureChars, textToPage, calcBookSize, supportFamily } from '@/utils/utils'
+import { measureChars, textToPage, layout, calcBookSize, supportFamily } from '@/utils/utils'
 import { bookSetting, appSetting } from '@/utils/setting'
 let { defaultPageSize, defaultPagePadding, limit, bookSize, pageSize, pagePadding, menuWidth } = bookSetting
 // 不需要响应式，并且量比较大的数据放到 _data 里
@@ -107,6 +107,10 @@ export default {
     fontFamily: {
       type: String,
       required: true
+    },
+    point: {  // 阅读进度字符下标
+      type: Number,
+      default: 0
     }
   },
   data() {
@@ -120,7 +124,8 @@ export default {
       menuWidth, // 菜单溢出宽度
       full: false,
       single: false,
-      loading: false
+      loading: false,
+      page: 0,  // 当前页下标，小于 0 时为封面，大于等于 _data.pages.length 时为封底
     }
   },
   computed: {
@@ -133,6 +138,20 @@ export default {
     propertiesToCalc() {
       let { text, fontSize, lineHeight, fontFamily } = this
       return { text, fontSize, lineHeight, fontFamily }
+    },
+    // 根据 point 和 _data.pages 计算 page -- 当前页下标，小于 0 时为封面，大于等于 _data.pages.length 时为封底
+    page() {
+      if (_data && Array.isArray(_data.pages)) {
+        let len = _data.pages.length
+        for (let i = 0; i < len; i++) {
+          if (point >= _data.pages[i].startIndex && point <= _data.pages[i].endIndex) {
+            return i
+          }
+        }
+        return 0
+      } else {
+        return 0
+      }
     }
   },
   created() {
@@ -155,6 +174,12 @@ export default {
     propertiesToCalc: {
       handler() {
         this.textToPage()
+      }
+    },
+    // 监听 page
+    page: {
+      handler() {
+        this.renderPage()
       }
     }
   },
@@ -216,12 +241,30 @@ export default {
         this.$message.error(`不支持当前字体${this.fontFamily}`)
         ctx.font = `${this.fontSize}px ${bookSetting.fontFamily}`
       }
+    },
+    // 绘制页面，不仅仅处理内容 canvas 的绘制，还处理封面和封底
+    renderPage() {
+      const tempPageInfo = _data.pages[this.page]
+      if (tempPageInfo.rows.length && !tempPageInfo.rows[0].calculated) {
+        const param = {
+          rows: tempPageInfo.rows,
+          width: this.width,
+          height: this.height,
+          paddingLeft: this.pagePadding[0],
+          paddingTop: this.pagePadding[1],
+          fontSize: this.fontSize,
+          lineHeight: this.lineHeight,
+          measures: _data.measures
+        }
+        _data.pages[this.page].rows = layout(param)
+      }
+      
     }
   }
 }
 </script>
 
-<style lang='scss' scoped>
+<style lang='less' scoped>
 .book {
   position: absolute;
   background: #444;
