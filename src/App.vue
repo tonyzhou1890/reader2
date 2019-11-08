@@ -10,6 +10,7 @@
       :fontFamily="setting.fontFamily"
       :fontSize="setting.fontSize"
       :lineHeight="setting.lineHeight"
+      :point="point"
       :percent="defaultPercent"
     />
     <div
@@ -68,8 +69,8 @@ export default {
       page: null,
       defaultPercent: null,
       showSetting: false,
-      defaultSetting: Object.assign({}, defaultSetting),
       setting: Object.assign({}, defaultSetting),
+      point: 0,
       mouseEvent: {
         down: null,
         lastSelectionType: ''

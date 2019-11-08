@@ -23,10 +23,10 @@ export function measureChars(param) {
   let textArray = Array.from(param.text)
   // 加上额外需要测量的字符
   let tempArr = textArray.concat([...prePunctuation, ...postPunctuation, '-', '阅'])
-  console.log('tempArr:', Date.now() - s)
+  console.log('  tempArr:', Date.now() - s)
   // 去重
   tempArr = [...new Set(tempArr)]
-  console.log('Set:', Date.now() - s)
+  console.log('  Set:', Date.now() - s)
   let measures = {}
   let len = tempArr.length
   // for 循环效率比 map 之类的遍历器高
@@ -274,19 +274,50 @@ export function textToPage(param) {
  * 绘制页面
  * @param {Object} param  参数对象
  * param: {
- *    chars: [
- *      {
- *        char: 'a',  // 字符
- *        left: null, // 左边距离
- *        top: null,  // 上部距离
- *      }
- *    ], // 文本
+ *    rows: [{
+ *      chars: [
+ *        {
+ *          char: 'a',
+ *          position: [100, 100, 116, 116], // 字符绘制位置
+ *        }
+ *      ]
+ *    }], // 文本
+ *    width: 100, // 纸张宽度
+ *    height: 100,  // 纸张高度
+ *    paddingLeft: 20,
+ *    paddingTop: 20,
+ *    full: true, // 是否全屏状态
  *    ctx: {},  // canvas 绘图上下文
+ *    fontSize: 16, // 字体大小，页眉和页脚文字大小为字体大小的 3/4，全屏模式下为 12
+ *    footerText: '12/12', // 页脚文字
  * }
  * 返回值：true/false
  */
 export function renderPage(param) {
+  const s = Date.now()
+  // 绘制内容
+  param.rows.map((item, row) => {
+    item.chars.map(chara => {
+      param.ctx.fillText(chara.char, chara.position[0], chara.position[3])
+    })
+  })
+  // 绘制页脚
+  param.ctx.save()
+  let _fontSize = param.full ? 12 : param.fontSize * 3 / 4
+  if (_fontSize > param.paddingTop) {
+    _fontSize = param.paddingTop * 3 / 4
+  }
+  param.ctx.font = `${_fontSize}px ${bookSetting.fontFamily}`
+  param.ctx.textAlign = 'center'
+  param.ctx.fillStyle = 'gray'
+  let position = [
+    param.width / 2,
+    param.height - param.paddingTop + (param.paddingTop - _fontSize) / 2
+  ]
+  param.ctx.fillText(param.footerText, ...position)
+  param.ctx.restore()
 
+  console.log('renderPage:', Date.now() - s)
 }
 
 /**
@@ -332,6 +363,8 @@ export function renderPage(param) {
 export function layout(param) {
   // 如果已经计算过了，直接返回
   if (param.rows[0] && param.rows[0].calculated) return param.rows
+
+  const s = Date.now()
 
   const _params = {...param}
   _params.lineHeight = param.fontSize * param.lineHeight
@@ -381,6 +414,7 @@ export function layout(param) {
     // 标记此行已经计算过
     item.calculated = true
   })
+  console.log('layout:', Date.now() - s)
 
   return _params.rows
 }
@@ -444,10 +478,14 @@ export function calcBookSize(param) {
   }
 
   // padding
-  res.pagePadding = [
-    res.pageSize[0] * param.defaultPagePadding[0] / param.defaultPageSize[0],
-    res.pageSize[1] * param.defaultPagePadding[1] / param.defaultPageSize[1]
-  ]
+  if (res.full) {
+    res.pagePadding = bookSetting.fullPagePadding
+  } else {
+    res.pagePadding = [
+      res.pageSize[0] * param.defaultPagePadding[0] / param.defaultPageSize[0],
+      res.pageSize[1] * param.defaultPagePadding[1] / param.defaultPageSize[1]
+    ]
+  }
 
   return res
 }
