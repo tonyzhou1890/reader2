@@ -17,7 +17,8 @@ export const bookSetting = {
   fontSize: 16,
   lineHeight: 1.5,
   color: '#333',
-  background: '#fff5ee'
+  background: '#fff5ee',
+  title: '享阅·阅读器'
 }
 
 /**

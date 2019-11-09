@@ -13,13 +13,19 @@
     <!-- 内容部分 -->
     <div
       class="content-wrapper"
+      ref="bookContainer"
       :style="{
         left: full ? 0 : menuWidth + 'px',
         width: full ? bookSize[0] + 'px' : bookSize[0] - menuWidth + 'px',
         height: bookSize[1] + 'px',
         background
       }"
+      tabindex="-1"
       @mousewheel="handleMousewheel"
+      @keydown.right="(e) => changePage(1)"
+      @keydown.left="(e) => changePage(-1)"
+      @touchstart="touch"
+      @touchend="touch"
     >
       <!-- page-1 -->
       <div
@@ -68,9 +74,24 @@
 
 <script>
 // import debounce from 'lodash/debounce'
-import { measureChars, textToPage, layout, renderPage, calcBookSize, supportFamily } from '@/utils/utils'
+import {
+  measureChars,
+  textToPage,
+  layout,
+  renderPage,
+  calcBookSize,
+  supportFamily
+} from '@/utils/utils'
 import { bookSetting, appSetting } from '@/utils/setting'
-let { defaultPageSize, defaultPagePadding, limit, bookSize, pageSize, pagePadding, menuWidth } = bookSetting
+let {
+  defaultPageSize,
+  defaultPagePadding,
+  limit,
+  bookSize,
+  pageSize,
+  pagePadding,
+  menuWidth
+} = bookSetting
 // 不需要响应式，并且量比较大的数据放到 _data 里
 let _data = {
   cacheText: '', // 缓存文本
@@ -82,8 +103,7 @@ window._data = _data
 // let _calcBookSize = debounce(calcBookSize, 100)
 export default {
   name: 'Book',
-  components: {
-  },
+  components: {},
   props: {
     width: {
       type: Number,
@@ -94,8 +114,14 @@ export default {
       required: true
     },
     text: {
+      // 正文
       type: String,
       default: appSetting.title
+    },
+    title: {
+      // 标题/书名
+      type: String,
+      default: ''
     },
     color: {
       type: String,
@@ -117,7 +143,13 @@ export default {
       type: String,
       required: true
     },
-    point: { // 阅读进度字符下标
+    point: {
+      // 阅读进度字符下标
+      type: Number,
+      default: 0
+    },
+    percent: {
+      // 阅读进度百分比
       type: Number,
       default: 0
     }
@@ -134,7 +166,13 @@ export default {
       full: false,
       single: false,
       loading: false,
-      page: 0 // 当前页下标，小于 0 时为封面，大于等于 _data.pages.length 时为封底
+      page: 0, // 当前页下标，小于 0 时为封面，大于等于 _data.pages.length 时为封底
+      touchData: {
+        start: null,
+        end: null,
+        duration: null,
+        direction: null
+      }
     }
   },
   computed: {
@@ -147,14 +185,22 @@ export default {
     propertiesToCalc() {
       let { text, fontSize, lineHeight, fontFamily } = this
       return { text, fontSize, lineHeight, fontFamily }
+    },
+    // 页面需要重新绘制的相关属性
+    propertiesToRender() {
+      let { color, title } = this
+      return { color, title }
     }
   },
-  created() {
-  },
+  created() {},
   mounted() {
     if (this.$refs.pageOneText) {
-      window.ctxOneText = this.ctxOneText = this.$refs.pageOneText.getContext('2d')
-      window.ctxTwoText = this.ctxTwoText = this.$refs.pageTwoText.getContext('2d')
+      window.ctxOneText = this.ctxOneText = this.$refs.pageOneText.getContext(
+        '2d'
+      )
+      window.ctxTwoText = this.ctxTwoText = this.$refs.pageTwoText.getContext(
+        '2d'
+      )
       this.textToPage()
     }
   },
@@ -172,6 +218,16 @@ export default {
         this.textToPage()
       }
     },
+    // 监听需要重新绘制的属性
+    propertiesToRender: {
+      handler() {
+        this.renderPage()
+        // 如果是双页，渲染第二页
+        if (!this.single) {
+          this.renderPage('two')
+        }
+      }
+    },
     // 监听point
     point: {
       handler() {
@@ -183,6 +239,10 @@ export default {
     page: {
       handler() {
         this.renderPage()
+        // 如果是双页，渲染第二页
+        if (!this.single) {
+          this.renderPage('two')
+        }
       }
     }
   },
@@ -199,7 +259,13 @@ export default {
         height: this.height,
         menuWidth: this.menuWidth
       })
-      if (res.single === this.single && res.full === this.full && res.bookSize[0] === this.bookSize[0] && res.bookSize[1] === this.bookSize[1]) return
+      if (
+        res.single === this.single &&
+        res.full === this.full &&
+        res.bookSize[0] === this.bookSize[0] &&
+        res.bookSize[1] === this.bookSize[1]
+      ) return
+
       ['full', 'single', 'pageSize', 'bookSize', 'pagePadding'].map(key => {
         _this[key] = res[key]
       })
@@ -236,6 +302,7 @@ export default {
       this.calcPage()
       // 以及渲染页面
       this.renderPage()
+      // 如果是双页，渲染第二页
       if (!this.single) {
         this.renderPage('two')
       }
@@ -261,7 +328,11 @@ export default {
       }
       const tempPageInfo = _data.pages[page]
       // 如果计算过每个文字的位置，则先计算
-      if (tempPageInfo && tempPageInfo.rows.length && !tempPageInfo.rows[0].calculated) {
+      if (
+        tempPageInfo &&
+        tempPageInfo.rows.length &&
+        !tempPageInfo.rows[0].calculated
+      ) {
         const param = {
           rows: tempPageInfo.rows,
           width: this.pageSize[0],
@@ -290,6 +361,8 @@ export default {
           paddingTop: this.pagePadding[1],
           full: this.full,
           fontSize: this.fontSize,
+          headerText: this.title,
+          headerTextAlign: two ? 'right' : 'left',
           footerText: `${page + 1}/${_data.pages.length}`
         }
         // 绘制页面
@@ -302,7 +375,10 @@ export default {
       if (_data && Array.isArray(_data.pages)) {
         let len = _data.pages.length
         for (let i = 0; i < len; i++) {
-          if (this.point >= _data.pages[i].startIndex && this.point <= _data.pages[i].endIndex) {
+          if (
+            this.point >= _data.pages[i].startIndex &&
+            this.point <= _data.pages[i].endIndex
+          ) {
             tempPage = i
           }
         }
@@ -315,8 +391,147 @@ export default {
     handleMousewheel(e) {
       e.wheelDelta > 0 ? this.changePage(-1) : this.changePage(1)
     },
+    // 触摸
+    tap(e) {
+      const rect = this.$refs.bookContainer.getBoundingClientRect()
+      const left = e.changedTouches[0].clientX - rect.left
+      if (left < rect.width / 3) {
+        this.changePage(-1)
+      } else if (left > (rect.width / 3) * 2) {
+        this.changePage(1)
+      }
+    },
+    // touch 事件
+    touch(e) {
+      if (e.type === 'touchstart') {
+        this.touchData.start = e
+      } else if (e.type === 'touchend') {
+        this.touchData.end = e
+        // 相关计算
+        const X =
+          this.touchData.end.changedTouches[0].clientX -
+          this.touchData.start.changedTouches[0].clientX
+        const Y =
+          this.touchData.end.changedTouches[0].clientY -
+          this.touchData.start.changedTouches[0].clientY
+        if (Math.abs(X) > 10 || Math.abs(Y) > 10) {
+          // 有效滑动
+          if (Math.abs(Y) > Math.abs(X)) {
+            // 竖直方向不处理
+            this.initTouchData()
+            return
+          }
+          // 水平方向处理
+          if (X < 0) {
+            this.changePage(1)
+            this.initTouchData()
+          } else {
+            this.changePage(1)
+            this.initTouchData()
+          }
+        } else if (
+          this.touchData.end.timeStamp - this.touchData.start.timeStamp <
+          300
+        ) {
+          // tap
+          this.tap(e)
+          this.initTouchData()
+        }
+      }
+    },
+    // 初始化touchData
+    initTouchData() {
+      Object.keys(this.touchData).map(item => {
+        this.touchData[item] = null
+      })
+    },
     // 页码改变
-    changePage() {      
+    // changePage(direction) {
+    // let len = _data.pages.length
+    // let total = len
+    // let newPage = this.page
+    // let newPoint = this.point
+    // let percent = 0
+    // if (this.frontCoverPath) {
+    //   total++
+    //   newPage++
+    // }
+    // if (this.backCoverPath) {
+    //   total++
+    // }
+    // 上一页
+    // if (direction < 0) {
+    //   // 如果当前进度大于1，说明目前在封底
+    //   if (this.percent > 1) {
+    //     // 如果是双页，并且书籍是偶数页，则往前翻应该是倒数第二页
+    //     newPoint = !this.single && len % 2 === 0 ? _data.pages[len - 2].startIndex : _data.pages[len - 1]
+    //     //
+    //   }
+    //   if (this.single) {
+    //     newPage -= 1
+    //   } else {
+    //     newPage -= 2
+    //   }
+    //   // 新的开始字符索引
+    //   // newPoint = _data.pages[newPage] ? _data.pages[newPage].startIndex : _data.pages[0].startIndex
+    //   // 阅读进度，只有当前页为第一页，并且有封面的时候，进度才为0
+    //   percent = this.page <= 0 && this.frontCoverPath ? 0 : (newPage + 1) / len
+    // } else {
+    //   // 下一页
+    //   if (this.single) {
+    //     newPage++
+    //   } else {
+    //     newPage += 2
+    //   }
+    //   // 新的开始字符索引
+    //   newPoint = _data.pages[newPage] ? _data.pages[newPage].startIndex : _data.pages[len - 1].startIndex
+    //   // 阅读进度
+
+    // }
+    // this.$emit('changePage', {
+    //   point: newPoint
+    // })
+    // }
+    // 页码改变
+    changePage(direction) {
+      let len = _data.pages.length
+      let percent = 0
+      // 如果没有内容
+      if (len === 0) {
+        // 上一页
+        if (direction < 0) {
+          percent = 0
+        } else {
+          percent = this.backCoverPath ? 1.1 : 1
+        }
+        return {
+          percent
+        }
+      }
+      // 有内容
+      // 上一页
+      if (direction < 0) {
+        // 单页
+        if (this.single) {
+          // 如果有封底，并且目前处于封底，则回到最后一页
+          if (this.page >= len && this.backCoverPath) {
+            percent = 1
+          } else {
+            // 否则回到前一页
+            percent = this.page / len
+          }
+          // 检查是否超出范围
+          if (this.frontCoverPath) {
+            percent = percent <= 0 ? 0 : percent
+          } else {
+          }
+          
+        } else {
+          // 双页
+        }
+      } else {
+        // 下一页
+      }
     }
   }
 }
@@ -332,7 +547,8 @@ export default {
     overflow: hidden;
     box-shadow: 5px 5px 12px gray;
     display: flex;
-    .page-1, .page-2 {
+    .page-1,
+    .page-2 {
       flex: 1;
     }
   }

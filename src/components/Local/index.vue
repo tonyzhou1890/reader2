@@ -11,7 +11,7 @@
     >
       <i class="el-icon-plus"></i>
       <div class="el-upload__text">将文件拖到此处，或<em>点击上传</em></div>
-      <div class="el-upload__tip" slot="tip">只能上传txt文件，建议大小200k以下</div>
+      <div class="el-upload__tip" slot="tip">只能上传txt文件，建议大小500k以下</div>
     </el-upload>
   </div>
 </template>
@@ -51,6 +51,7 @@ export default {
           this.data = res
           this.$emit('get-data', {
             key: e.raw.name + e.raw.size,
+            title: e.raw.name.replace(/[\.txt|\.TXT]/g, ''),
             value: this.data
           })
         })

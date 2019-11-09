@@ -112,6 +112,7 @@ export function textToPage(param) {
         startIndex: i
       }
     }
+
     // 如果是新行，初始化新行数据
     if (rowWidth === 0) {
       rows[row] = {
@@ -184,8 +185,10 @@ export function textToPage(param) {
   // 检查最后一个字符是否为非换行符，如果是非换行符，需要结束行和页
   if (_params.text[len - 1] !== '\r' && _params.text[len - 1] !== '\n') {
     endRow(len - 1)
-    endPage(len - 1)
   }
+  // 最后一页的最后一行不需要填充空隙
+  let tempRowLen = pages[page - 1].rows.length
+  pages[page - 1].rows[tempRowLen - 1].completed = false
   console.log('textToPage:', Date.now() - s)
   // 返回结果
   return pages
@@ -199,8 +202,8 @@ export function textToPage(param) {
     row++
     rowChars = []
     rowWidth = 0
-    // 如果达到最大行，结束此页
-    if (row >= _params.rowNum) {
+    // 如果达到最大行/最后一个字符，结束此页
+    if (row >= _params.rowNum || index === len - 1) {
       endPage(index)
     }
   }
@@ -315,6 +318,15 @@ export function renderPage(param) {
     param.height - param.paddingTop + (param.paddingTop - _fontSize) / 2
   ]
   param.ctx.fillText(param.footerText, ...position)
+  // 绘制页眉
+  if (param.headerText) {
+    param.ctx.textAlign = param.headerTextAlign === 'right' ? param.headerTextAlign : 'left'
+    position = [
+      param.headerTextAlign === 'right' ? param.width - param.paddingLeft : param.paddingLeft,
+      param.paddingTop - (param.paddingTop - _fontSize) / 2
+    ]
+    param.ctx.fillText(param.headerText, ...position)
+  }
   param.ctx.restore()
 
   console.log('renderPage:', Date.now() - s)

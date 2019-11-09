@@ -3,6 +3,7 @@
     <Book
       :style="`z-index: 1`"
       :text="message"
+      :title="title"
       :width="width"
       :height="height"
       :color="setting.color"
@@ -12,6 +13,7 @@
       :lineHeight="setting.lineHeight"
       :point="point"
       :percent="defaultPercent"
+      @changePage="handleChangePage"
     />
     <div
       v-show="showSetting"
@@ -65,6 +67,7 @@ export default {
       width: null,
       height: null,
       message: title,
+      title: bookSetting.title,
       total: null,
       page: null,
       defaultPercent: null,
@@ -129,7 +132,10 @@ export default {
       axios.get(url)
         .then(res => {
           this.message = res.data
-          this.address = url
+          this.address = decodeURI(url)
+          let bookTitle = this.address.split('/')
+          bookTitle = bookTitle[bookTitle.length - 1].replace(/[\.txt|\.TXT]/g, '')
+          this.title = bookTitle
           // this.getProcess(this.address)
           this.loading = false
         })
@@ -165,10 +171,8 @@ export default {
       this.toggleSetting()
       this.storeSetting()
     },
-    changePage(val) {
-      this.page = val
-      this.defaultPercent = this.page / this.total * 100
-      this.toggleSetting()
+    handleChangePage(val) {
+      this.point = val.point
     },
     storeSetting() {
       localforage.setItem('setting', this.setting)
@@ -197,6 +201,7 @@ export default {
     getLocalData(e) {
       this.message = e.value
       this.local = e.key
+      this.title = e.title
       this.showLocal = false
     }
   }
