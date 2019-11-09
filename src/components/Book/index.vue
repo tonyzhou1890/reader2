@@ -4,10 +4,10 @@
     class="book"
     v-loading="loading"
     :style="{
-      left: (width - bookSize[0]) / 2 + 'px',
-      top: (height - bookSize[1]) / 2 + 'px',
-      width: bookSize[0] + 'px',
-      height: bookSize[1] + 'px'
+      left: (width - _bookSize[0]) / 2 + 'px',
+      top: (height - _bookSize[1]) / 2 + 'px',
+      width: _bookSize[0] + 'px',
+      height: _bookSize[1] + 'px'
     }"
   >
     <!-- 内容部分 -->
@@ -16,8 +16,8 @@
       ref="bookContainer"
       :style="{
         left: full ? 0 : menuWidth + 'px',
-        width: full ? bookSize[0] + 'px' : bookSize[0] - menuWidth + 'px',
-        height: bookSize[1] + 'px',
+        width: full ? _bookSize[0] + 'px' : _bookSize[0] - menuWidth + 'px',
+        height: _bookSize[1] + 'px',
         background
       }"
       tabindex="-1"
@@ -27,8 +27,21 @@
       @touchstart="touch"
       @touchend="touch"
     >
+      <!-- 封面 -->
+      <img
+        v-show="showWhat === 'frontCover'"
+        class="cover-img"
+        :src="frontCoverPath"
+      />
+      <!-- 封底 -->
+      <img
+        v-show="showWhat === 'backCover'"
+        class="cover-img"
+        :src="backCoverPath"
+      />
       <!-- page-1 -->
       <div
+        v-show="showWhat === 'content'"
         class="page-1"
         :style="{
           width: pageSize[0],
@@ -49,7 +62,7 @@
       </div>
       <!-- page-2 -->
       <div
-        v-show="!single"
+        v-show="!single && showWhat === 'content'"
         class="page-2"
         :style="{
           width: pageSize[0],
@@ -143,15 +156,23 @@ export default {
       type: String,
       required: true
     },
-    point: {
-      // 阅读进度字符下标
-      type: Number,
-      default: 0
-    },
+    // point: {
+    //   // 阅读进度字符下标
+    //   type: Number,
+    //   default: 0
+    // },
     percent: {
       // 阅读进度百分比
       type: Number,
       default: 0
+    },
+    frontCoverPath: {
+      type: String,
+      default: ''
+    },
+    backCoverPath: {
+      type: String,
+      default: ''
     }
   },
   data() {
@@ -190,6 +211,28 @@ export default {
     propertiesToRender() {
       let { color, title } = this
       return { color, title }
+    },
+    // 显示内容
+    showWhat() {
+      if (this.frontCoverPath && this.page < 0) {
+        return 'frontCover'
+      } else if (this.backCoverPath && this.page >= _data.pages.length) {
+        return 'backCover'
+      } else {
+        return 'content'
+      }
+    },
+    // 显示的 bookSize，这里重新定义一个 _bookSize 是为了解决封面封底显示问题
+    // 显示封面封底的时候，应该只显示封面和封底，并且居中
+    _bookSize() {
+      if (this.showWhat === 'content' || this.full || this.single) {
+        return this.bookSize
+      } else {
+        return [
+          this.bookSize[0] - this.pageSize[0],
+          this.bookSize[1]
+        ]
+      }
     }
   },
   created() {},
@@ -228,8 +271,8 @@ export default {
         }
       }
     },
-    // 监听point
-    point: {
+    // 监听percent
+    percent: {
       handler() {
         this.calcPage()
       },
@@ -369,18 +412,44 @@ export default {
         renderPage(renderParam)
       }
     },
-    // 根据 point 和 _data.pages 计算 page
+    // 根据 percent 和 _data.pages 计算 page
     calcPage() {
-      let tempPage = 0
-      if (_data && Array.isArray(_data.pages)) {
+      let tempPage = this.frontCoverPath ? -1 : 0
+      if (_data && Array.isArray(_data.pages) && _data.pages.length) {
         let len = _data.pages.length
-        for (let i = 0; i < len; i++) {
-          if (
-            this.point >= _data.pages[i].startIndex &&
-            this.point <= _data.pages[i].endIndex
-          ) {
-            tempPage = i
+        // let odd = len % 2
+        // 百分比下限
+        if (this.percent <= 0) {
+          // 有封面
+          if (this.frontCoverPath) {
+            tempPage = -1
+          } else {
+            // 没有封面
+            tempPage = 0
           }
+        } else if (this.percent > 1) {
+          // 百分比上限
+          // 有封底
+          if (this.backCoverPath) {
+            tempPage = len
+          } else {
+            // 没有封底
+            tempPage = len - 1
+          }
+        } else {
+          // 正常情况
+          tempPage = Math.round(this.percent * len) - 1
+          // 双页时，需要检查 tempPage 是否在左边
+          if (!this.single && tempPage > 0 && tempPage % 2 === 1) {
+            tempPage--
+          }
+          if (tempPage < 0) {
+            tempPage = 0
+          }
+        }
+      } else {
+        if (this.percent > 1 && this.backCoverPath) {
+          tempPage = 0
         }
       }
       if (this.page !== tempPage) {
@@ -504,9 +573,10 @@ export default {
         } else {
           percent = this.backCoverPath ? 1.1 : 1
         }
-        return {
+        this.$emit('changePage', {
           percent
-        }
+        })
+        return
       }
       // 有内容
       // 上一页
@@ -521,17 +591,67 @@ export default {
             percent = this.page / len
           }
           // 检查是否超出范围
+          // 有封面最小为0，没有封面最小为 1 / len
           if (this.frontCoverPath) {
-            percent = percent <= 0 ? 0 : percent
+            percent = percent < 0 ? 0 : percent
           } else {
+            percent = percent < 1 / len ? 1 / len : percent
           }
-          
         } else {
           // 双页
+          // 如果有封底，并且目前处于封底，则回到最后一页
+          // 双页的情况下，百分比是按照右边的一页算的
+          if (this.page >= len && this.backCoverPath) {
+            percent = 1
+          } else {
+            // 否则回到前两页
+            percent = this.page / len
+          }
+          // 检查是否超出范围
+          // 有封面最小为0，没有封面，如果内容只有一页，最小为1，否则为 2 / len
+          if (this.frontCoverPath) {
+            percent = percent < 0 ? 0 : percent
+          } else {
+            let minPercent = len === 1 ? 1 : 2 / len
+            percent = percent < minPercent ? minPercent : percent
+          }
         }
       } else {
         // 下一页
+        // 单页
+        if (this.single) {
+          // 如果有封面，并且目前处于封面，则到第一页
+          if (this.page < 0 && this.frontCoverPath) {
+            percent = 1 / len
+          } else {
+            // 否则到下一页
+            percent = (this.page + 2) / len
+          }
+          // 检查是否超出范围
+          // 没有封底，最大为1
+          if (!this.frontCoverPath) {
+            percent = percent > 1 ? 1 : percent
+          }
+        } else {
+          // 双页
+          // 如果有封面，并且目前处于封面，如果内容只有一页，到第一页，否则到第二页
+          // 双页的情况下，百分比是按照右边的一页算的
+          if (this.page < 0 && this.frontCoverPath) {
+            percent = len === 1 ? 1 : 2 / len
+          } else {
+            // 否则到后两页
+            percent = (this.page + 3) / len
+          }
+          // 检查是否超出范围
+          // 没有封底，最大为1
+          if (!this.frontCoverPath) {
+            percent = percent > 1 ? 1 : percent
+          }
+        }
       }
+      this.$emit('changePage', {
+        percent
+      })
     }
   }
 }
@@ -550,6 +670,12 @@ export default {
     .page-1,
     .page-2 {
       flex: 1;
+    }
+    .cover-img {
+      vertical-align: middle;
+      margin: 0 auto;
+      width: 100%;
+      height: 100%;
     }
   }
 }

@@ -83,6 +83,9 @@ export function measureChars(param) {
  *  ]
  */
 export function textToPage(param) {
+  if (!param.text.length) {
+    return []
+  }
   let s = Date.now()
   // 参数预处理
   let _params = {...param}

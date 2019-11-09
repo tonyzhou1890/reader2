@@ -11,8 +11,9 @@
       :fontFamily="setting.fontFamily"
       :fontSize="setting.fontSize"
       :lineHeight="setting.lineHeight"
-      :point="point"
-      :percent="defaultPercent"
+      :percent="percent"
+      :frontCoverPath="frontCoverPath"
+      :backCoverPath="backCoverPath"
       @changePage="handleChangePage"
     />
     <div
@@ -70,7 +71,9 @@ export default {
       title: bookSetting.title,
       total: null,
       page: null,
-      defaultPercent: null,
+      percent: null,
+      frontCoverPath: 'http://kod.tony93.top/data/User/admin/home/%E5%9B%BE%E7%89%87/magazine-unlock-01-2.3.353-bigpicture_01_41.jpg',
+      backCoverPath: 'http://kod.tony93.top/data/User/admin/home/%E5%9B%BE%E7%89%87/dot.png',
       showSetting: false,
       setting: Object.assign({}, defaultSetting),
       point: 0,
@@ -172,7 +175,7 @@ export default {
       this.storeSetting()
     },
     handleChangePage(val) {
-      this.point = val.point
+      this.percent = val.percent
     },
     storeSetting() {
       localforage.setItem('setting', this.setting)
