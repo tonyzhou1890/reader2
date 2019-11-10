@@ -47,6 +47,8 @@ import Local from './components/Local'
 import Book from './components/Book'
 import localforage from 'localforage'
 import { bookSetting, appSetting } from '@/utils/setting'
+import { getBookInfo, setBookInfo } from '@/utils/storage'
+import { appErrorInfo } from '@/utils/error'
 let { fontFamily, fontSize, lineHeight, color, background } = bookSetting
 let { title } = appSetting
 const defaultSetting = {
@@ -76,7 +78,7 @@ export default {
       backCoverPath: 'http://kod.tony93.top/data/User/admin/home/%E5%9B%BE%E7%89%87/dot.png',
       showSetting: false,
       setting: Object.assign({}, defaultSetting),
-      point: 0,
+      type: 'local', // 打开方式：address、local、message
       mouseEvent: {
         down: null,
         lastSelectionType: ''
@@ -84,7 +86,8 @@ export default {
       address: null,
       loading: false,
       local: null,
-      showLocal: false
+      showLocal: false,
+      saveBookInfoTimeOut: null // 缓存书籍信息延时引用
     }
   },
   computed: {
@@ -118,6 +121,7 @@ export default {
       // 是否通过address指定文本地址
       const address = temp.filter(item => { return item[0] === 'address' })
       if (address.length) {
+        this.type = 'address'
         this.getAddressTxt(address[0][1])
         return
       }
@@ -128,19 +132,29 @@ export default {
         return
       }
       // 其余默认local
+      this.type = 'local'
       this.showLocal = true
     },
     getAddressTxt(url) {
       this.loading = true
+      let address = decodeURI(url)
       axios.get(url)
         .then(res => {
-          this.message = res.data
-          this.address = decodeURI(url)
-          let bookTitle = this.address.split('/')
-          bookTitle = bookTitle[bookTitle.length - 1].replace(/[\.txt|\.TXT]/g, '')
-          this.title = bookTitle
-          // this.getProcess(this.address)
-          this.loading = false
+          getBookInfo(address)
+            .then(res => {
+              if (res) {
+                this.percent = res.percent
+              }
+              this.message = res.data
+              this.address = address
+              let bookTitle = address.split('/')
+              bookTitle = bookTitle[bookTitle.length - 1].replace(/[\.txt|\.TXT]/g, '')
+              this.title = bookTitle
+              this.loading = false
+            })
+            .catch(e => {
+              this.$message.error(appErrorInfo('101'))
+            })
         })
         .catch(e => {
           this.$message({
@@ -202,10 +216,42 @@ export default {
       }
     },
     getLocalData(e) {
-      this.message = e.value
-      this.local = e.key
-      this.title = e.title
-      this.showLocal = false
+      getBookInfo(e.key)
+        .then(res => {
+          if (res) {
+            this.percent = res.percent || this.percent
+          }
+          this.message = e.value
+          this.local = e.key
+          this.title = e.title
+          this.showLocal = false
+        })
+        .catch(e => {
+          this.$message.error(appErrorInfo('101'))
+        })
+    },
+    // 缓存书籍信息
+    saveBookInfo() {
+      let key = ''
+      switch(this.type) {
+        case 'address':
+          key = this.address
+          break
+        case 'local':
+          key = this.local
+          break
+        default:
+          return
+      }
+      clearTimeout(this.saveBookInfoTimeOut)
+      this.saveBookInfoTimeOut = setTimeout(() => {
+        setBookInfo(key, {
+          percent: this.percent,
+          updateTime: Date.now(),
+          type: this.type,
+          free: 0
+        })
+      }, 3000)
     }
   }
 }
