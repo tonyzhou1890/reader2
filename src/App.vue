@@ -2,7 +2,7 @@
   <div id="app" class="por" v-loading="loading">
     <Book
       :style="`z-index: 1`"
-      :text="message"
+      :text="text"
       :title="title"
       :width="width"
       :height="height"
@@ -69,13 +69,13 @@ export default {
     return {
       width: null,
       height: null,
-      message: title,
+      text: title,
       title: bookSetting.title,
       total: null,
       page: null,
       percent: null,
-      frontCoverPath: 'http://kod.tony93.top/data/User/admin/home/%E5%9B%BE%E7%89%87/magazine-unlock-01-2.3.353-bigpicture_01_41.jpg',
-      backCoverPath: 'http://kod.tony93.top/data/User/admin/home/%E5%9B%BE%E7%89%87/dot.png',
+      frontCoverPath: '',
+      backCoverPath: '',
       showSetting: false,
       setting: Object.assign({}, defaultSetting),
       type: 'local', // 打开方式：address、local、message
@@ -87,7 +87,8 @@ export default {
       loading: false,
       local: null,
       showLocal: false,
-      saveBookInfoTimeOut: null // 缓存书籍信息延时引用
+      saveBookInfoTimeOut: null, // 缓存书籍信息延时引用
+      message: null // postMessage 发送过来的信息
     }
   },
   computed: {
@@ -127,25 +128,31 @@ export default {
       }
       // 是否通过message通信
       const message = temp.filter(item => item[0] === 'message')
-      if (message.length) {
-        console.log(message)
+      if (message.length && window.opener) {
+        this.type = 'message'
+        window.addEventListener('message', this.dealPostMessage)
+        window.opener.postMessage({
+          from: 'reader',
+          data: 'ready'
+        }, '*')
         return
       }
       // 其余默认local
       this.type = 'local'
       this.showLocal = true
     },
+    // 处理通过指定 address 打开的方式
     getAddressTxt(url) {
       this.loading = true
       let address = decodeURI(url)
       axios.get(url)
         .then(res => {
           getBookInfo(address)
-            .then(res => {
-              if (res) {
-                this.percent = res.percent
+            .then(bookInfo => {
+              if (bookInfo) {
+                this.percent = bookInfo.percent
               }
-              this.message = res.data
+              this.text = res.data
               this.address = address
               let bookTitle = address.split('/')
               bookTitle = bookTitle[bookTitle.length - 1].replace(/[\.txt|\.TXT]/g, '')
@@ -163,6 +170,26 @@ export default {
           })
           this.loading = false
         })
+    },
+    // 处理 postMessage 形式的用法
+    dealPostMessage(e) {
+      if (e.data && e.data.dest === 'reader') {
+        this.message = e.data
+        this.loading = true
+        axios.get(this.message.data.textPath)
+        // axios.get('http://store.tony93.top/舞舞舞.txt')
+          .then(res => {
+            this.text = res.data
+            this.frontCoverPath = this.message.data.frontCoverPath
+            this.backCoverPath = this.message.data.backCoverPath
+            this.loading = false
+          })
+          .catch(e => {
+            this.$message.error('获取文本失败。错误码：201')
+            console.log(e)
+            this.loading = false
+          })
+      }
     },
     middleClick(e) {
       if (e.type === 'mousedown') {
@@ -190,6 +217,7 @@ export default {
     },
     handleChangePage(val) {
       this.percent = val.percent
+      this.saveBookInfo()
     },
     storeSetting() {
       localforage.setItem('setting', this.setting)
@@ -221,7 +249,7 @@ export default {
           if (res) {
             this.percent = res.percent || this.percent
           }
-          this.message = e.value
+          this.text = e.value
           this.local = e.key
           this.title = e.title
           this.showLocal = false
@@ -233,7 +261,7 @@ export default {
     // 缓存书籍信息
     saveBookInfo() {
       let key = ''
-      switch(this.type) {
+      switch (this.type) {
         case 'address':
           key = this.address
           break

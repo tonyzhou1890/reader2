@@ -3,7 +3,7 @@ const BOOKINFO = 'BOOKINFO'
 
 /**
  * 获取缓存中的书籍信息
- * @param {*} key 
+ * @param {*} key
  */
 export function getBookInfo(key) {
   return new Promise((resolve, reject) => {
@@ -16,6 +16,7 @@ export function getBookInfo(key) {
         }
       })
       .catch(e => {
+        console.log(e)
         reject(e)
       })
   })
@@ -29,7 +30,7 @@ export function getBookInfo(key) {
 export function setBookInfo(key, value) {
   return new Promise((resolve, reject) => {
     if (!Object.keys(value).length) {
-      reject('no data to store')
+      reject(new Error('no data to store'))
     } else {
       localforage.getItem(BOOKINFO)
         .then(res => {
@@ -44,6 +45,7 @@ export function setBookInfo(key, value) {
                 key,
                 ...value
               }
+              res.push(book)
             }
             localforage.setItem(BOOKINFO, res)
               .then(storeRes => {
