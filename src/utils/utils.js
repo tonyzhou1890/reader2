@@ -24,17 +24,29 @@ export function measureChars(param) {
   // 加上额外需要测量的字符
   let tempArr = textArray.concat([...prePunctuation, ...postPunctuation, '-', '阅'])
   console.log('  tempArr:', Date.now() - s)
-  // 去重
-  tempArr = [...new Set(tempArr)]
-  console.log('  Set:', Date.now() - s)
-  let measures = {}
+  // 第一种，先去重，然后测量
+  // // 去重
+  // tempArr = [...new Set(tempArr)]
+  // console.log('  Set:', Date.now() - s)
+  // let measures = {}
+  // let len = tempArr.length
+  // // for 循环效率比 map 之类的遍历器高
+  // for (let i = 0; i < len; i++) {
+  //   measures[tempArr[i]] = {
+  //     width: param.ctx.measureText(tempArr[i]).width
+  //   }
+  // }
+  // 第二种，直接遍历测量--这种效率更高
   let len = tempArr.length
-  // for 循环效率比 map 之类的遍历器高
+  let measures = {}
   for (let i = 0; i < len; i++) {
-    measures[tempArr[i]] = {
-      width: param.ctx.measureText(tempArr[i]).width
+    if (!measures[tempArr[i]]) {
+      measures[tempArr[i]] = {
+        width: param.ctx.measureText(tempArr[i]).width
+      }
     }
   }
+  // console.log('  Set:', Date.now() - s)
   // tab符、换行符特殊处理
   if (measures['\t']) {
     measures['\t'].width = measures['阅'].width * 2
