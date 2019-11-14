@@ -330,7 +330,7 @@ export function renderPage(param) {
   param.ctx.fillStyle = 'gray'
   let position = [
     param.width / 2,
-    param.height - param.paddingTop + (param.paddingTop - _fontSize) / 2
+    param.height - (param.paddingTop - _fontSize) / 2
   ]
   param.ctx.fillText(param.footerText, ...position)
   // 绘制页眉

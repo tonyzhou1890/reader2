@@ -21,4 +21,7 @@
 ### 错误码
 |错误码|相关功能|说明|
 |---|---|---|
-|101|获取缓存书籍信息|getBookInfo函数|
+|r101|获取缓存书籍信息|getBookInfo函数|
+|r201|通过postMessage传过来的文本地址获取文本失败|dealPostMessage函数|
+|r202|将当前阅读书籍进度发送到postMessage指定地址失败|savePercentOnline函数|
+|r202|将当前阅读书籍进度发送到postMessage指定地址成功，但后端处理失败|savePercentOnline函数|

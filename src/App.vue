@@ -176,19 +176,38 @@ export default {
       if (e.data && e.data.dest === 'reader') {
         this.message = e.data
         this.loading = true
-        axios.get(this.message.data.textPath)
-        // axios.get('http://store.tony93.top/舞舞舞.txt')
-          .then(res => {
-            this.text = res.data
-            this.frontCoverPath = this.message.data.frontCoverPath
-            this.backCoverPath = this.message.data.backCoverPath
-            this.loading = false
-          })
-          .catch(e => {
-            this.$message.error('获取文本失败。错误码：201')
-            console.log(e)
-            this.loading = false
-          })
+        // 如果有 uuid 则继续获取文本
+        if (this.message.data.uuid) {
+          axios.get(this.message.data.textPath)
+          // axios.get('http://store.tony93.top/舞舞舞.txt')
+            .then(res => {
+              // 获取文本后先从本地获取进度，与线上进度时间对比
+              getBookInfo(this.message.data.uuid)
+                .then(bookInfo => {
+                  // 设置percent
+                  if (bookInfo && this.message.data.updateTime && bookInfo.updateTime > new Date(this.message.data.updateTime).getTime()) {
+                    this.percent = bookInfo.percent
+                  } else {
+                    this.percent = this.message.data.percent ? this.message.data.percent * 100 : null
+                  }
+
+                  this.text = res.data
+                  this.frontCoverPath = this.message.data.frontCoverPath
+                  this.backCoverPath = this.message.data.backCoverPath
+                  this.loading = false
+                })
+                .catch(e => {
+                  this.$message.error(appErrorInfo('r101'))
+                })
+            })
+            .catch(e => {
+              this.$message.error('获取文本失败。错误码：r201')
+              console.log(e)
+              this.loading = false
+            })
+        } else {
+          this.$message.error('书籍信息错误，缺少uuid')
+        }
       }
     },
     middleClick(e) {
@@ -255,7 +274,7 @@ export default {
           this.showLocal = false
         })
         .catch(e => {
-          this.$message.error(appErrorInfo('101'))
+          this.$message.error(appErrorInfo('r101'))
         })
     },
     // 缓存书籍信息
@@ -268,6 +287,9 @@ export default {
         case 'local':
           key = this.local
           break
+        case 'message':
+          key = this.message.data.uuid
+          break
         default:
           return
       }
@@ -276,10 +298,33 @@ export default {
         setBookInfo(key, {
           percent: this.percent,
           updateTime: Date.now(),
-          type: this.type,
-          free: 0
+          type: this.type
         })
+
+        // 发送请求
+        if (this.type === 'message' && this.message.request && this.message.request.url) {
+          this.savePercentOnline()
+        }
       }, 3000)
+    },
+    // 阅读进度存储服务器
+    savePercentOnline() {
+      let reqConfig = {...this.message.request}
+      if (this.message.request.data) {
+        reqConfig.data = {
+          ...this.message.request.data,
+          percent: this.percent * 100
+        }
+      }
+      axios(reqConfig)
+        .then(res => {
+          if (res.data.code !== 0) {
+            this.$message.error('同步进度失败。错误码：r203')
+          }
+        })
+        .catch(e => {
+          this.$message.error('同步进度失败。错误码：r202')
+        })
     }
   }
 }
