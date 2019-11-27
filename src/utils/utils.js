@@ -22,7 +22,7 @@ export function measureChars(param) {
   // 将文本转成数组，防止四字节字符问题
   let textArray = Array.from(param.text)
   // 加上额外需要测量的字符
-  let tempArr = textArray.concat([...prePunctuation, ...postPunctuation, '-', '阅'])
+  let tempArr = textArray.concat([...prePunctuation, ...postPunctuation, bookSetting.hyphen, '阅'])
   console.log('  tempArr:', Date.now() - s)
   // 第一种，先去重，然后测量
   // // 去重
@@ -115,6 +115,7 @@ export function textToPage(param) {
   let curChar = ''
   let tempRowWidth = 0
   let breakMaxChars = bookSetting.breakMaxChars < 0 ? 0 : bookSetting.breakMaxChars
+  let englishMaxWrapChars = bookSetting.englishMaxWrapChars < 0 ? 0 : bookSetting.englishMaxWrapChars
   let backCharInfo = false // 回溯信息
   // 遍历字符分行分页
   for (let i = 0; i < len; i++) {
@@ -154,12 +155,17 @@ export function textToPage(param) {
        *      1.1.1 上一行最后一个字符（前一个字符）为换行符，不回溯换行
        *      1.1.2 最大回溯字符数以内，回溯换行
        *      1.1.3 超过最大回溯字符数，不回溯换行
-       *      1.1.4 判断：一行第一个字符，并且是后置字符，并且前一个字符有值且非换行符，并且回溯字符数以内有非后置字符
+       *      1.1.4 上一个字符为英文，不回溯换行
+       *      1.1.5 判断：一行第一个字符，并且是后置字符，并且前一个字符有值且非换行符、非英文，并且回溯字符数以内有非后置字符
        *    1.2 行尾前置符号
        *      1.2.1 下一个字符为换行字符，不提前换行
        *      1.2.2 剩余空间小于下一个非换行字符，提前换行
        *      1.2.3 回溯字符数以内遇到非前置字符，非前置字符后提前换行
        *      1.2.4 判断：下一个字符非换行字符，且剩余空间小于下一个字符，然后函数回溯
+       *    1.3 行尾英文字符
+       *      1.3.1 下一个字符也是英文，回溯换行
+       *      1.3.2 最大英文回溯字符以内，回溯换行
+       *      1.3.3 超过最大英文回溯字符数，添加连字符换行
        *    1.3 其余情况，常规处理--改变当前行宽度，当前字符加入当前行
        * 2 没有剩余空间，换行
        */
@@ -181,11 +187,28 @@ export function textToPage(param) {
           _params.text[i - 1] &&
           _params.text[i - 1] !== '\r' &&
           _params.text[i - 1] !== '\n' &&
+          !bookSetting.englishCharReg.test(_params.text[i - 1]) &&
           _params.width - tempRowWidth < _params.measures[_params.text[i - 1]].width &&
           (backCharInfo = validPreBack(i))
         ) {
           rowChars.splice(backCharInfo.endIndex - rows[row].startIndex + 1)
           endRow(backCharInfo.endIndex)
+          i = backCharInfo.endIndex
+        } else if ( // 行尾连续英文
+          bookSetting.englishCharReg.test(curChar) &&
+          _params.text[i - 1] &&
+          _params.text[i + 1] &&
+          bookSetting.englishCharReg.test(_params.text[i + 1]) &&
+          _params.width - tempRowWidth < _params.measures[_params.text[i + 1]].width &&
+          (backCharInfo = validEnglishPreBack(i))
+        ) {
+          rowChars.splice(backCharInfo.endIndex - rows[row].startIndex + 1)
+          if (backCharInfo.append) {
+            rows[row].append = backCharInfo.append
+            rowChars[rowChars.length] = backCharInfo.append
+          }
+          endRow(backCharInfo.endIndex)
+          i = backCharInfo.endIndex
         } else { // 其余情况
           rowWidth = tempRowWidth
           rowChars[rowChars.length] = curChar
@@ -238,14 +261,7 @@ export function textToPage(param) {
    * 行首后置字符回溯是否有效
    */
   function validPostBack(i) {
-    // 如果只回溯一个，直接返回i-2
-    if (breakMaxChars === 0) {
-      return i - 2
-    }
-    // 否则深度回溯
-    let start = i - 1 - breakMaxChars - 1
     let prevRow = null
-    let index = null
     // 上一行在前页
     if (!row) {
       prevRow = pages[page - 1].rows[_params.rowNum - 1]
@@ -253,7 +269,17 @@ export function textToPage(param) {
       // 上一行不在前页
       prevRow = rows[row - 1]
     }
-    start = prevRow.startIndex < start ? prevRow.startIndex : start
+    // 如果只回溯一个，直接返回i-2
+    if (breakMaxChars === 0) {
+      return {
+        prevRow,
+        endIndex: i - 2
+      }
+    }
+    // 否则深度回溯
+    let start = i - 1 - breakMaxChars - 1
+    let index = null
+    start = prevRow.startIndex > start ? prevRow.startIndex : start
     for (index = i - 1; index > start; index--) {
       if (!postPunctuation.includes(_params.text[index])) {
         return {
@@ -271,12 +297,14 @@ export function textToPage(param) {
   function validPreBack(i) {
     // 如果不回溯，直接返回i-1
     if (breakMaxChars === 0) {
-      return i - 1
+      return {
+        endIndex: i - 1
+      }
     }
     // 否则深度回溯
     let start = i - 1 - breakMaxChars
     let index = null
-    start = rows[row].startIndex < start ? rows[row].startIndex : start
+    start = rows[row].startIndex > start ? rows[row].startIndex : start
     for (index = i - 1; index > start; index--) {
       if (!prePunctuation.includes(_params.text[index])) {
         return {
@@ -285,6 +313,34 @@ export function textToPage(param) {
       }
     }
     return false
+  }
+
+  /**
+   * 行尾连续英文回溯是否有效
+   */
+  function validEnglishPreBack(i) {
+    const temp = {
+      endIndex: i - 1
+    }
+    // 否则深度回溯
+    let start = i - 1 - englishMaxWrapChars
+    let index = null
+    start = rows[row].startIndex > start ? rows[row].startIndex : start
+    for (index = i - 1; index > start; index--) {
+      if (!bookSetting.englishCharReg.test(_params.text[index])) {
+        temp.endIndex = index
+        break
+      }
+    }
+    // 如果换行后本行最后一个字符是英文，需要添加连字符，并且重置最后一个字符位置
+    if (bookSetting.englishCharReg.test(_params.text[temp.endIndex])) {
+      temp.endIndex = i - 1
+      temp.append = bookSetting.hyphen
+    }
+    // if (page < 2) {
+    //   console.log(temp, start, index)
+    // }
+    return temp
   }
 }
 
@@ -477,7 +533,7 @@ export function calcBookSize(param) {
     let tempWidth = param.width - 20 * 2
     let tempHeight = param.height - 20 * 2
     // 单页
-    if (param.width < param.height) {
+    if (param.width < param.height || param.width < 1000) {
       res.single = true
       // 宽度不足
       if ((tempWidth - param.menuWidth) / tempHeight < pageRatio) {

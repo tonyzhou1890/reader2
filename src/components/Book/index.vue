@@ -44,8 +44,8 @@
         v-show="showWhat === 'content'"
         class="page-1"
         :style="{
-          width: pageSize[0],
-          height: pageSize[1]
+          width: pageSize[0] + 'px',
+          height: pageSize[1] + 'px'
         }"
       >
         <div class="por">
@@ -54,8 +54,8 @@
             ref="pageOneText"
             class="poa"
             :style="{
-              width: pageSize[0],
-              height: pageSize[1]
+              width: pageSize[0] + 'px',
+              height: pageSize[1] + 'px'
             }"
           />
         </div>
@@ -65,8 +65,8 @@
         v-show="!single && showWhat === 'content'"
         class="page-2"
         :style="{
-          width: pageSize[0],
-          height: pageSize[1]
+          width: pageSize[0] + 'px',
+          height: pageSize[1] + 'px'
         }"
       >
         <div class="por">
@@ -75,8 +75,8 @@
             ref="pageTwoText"
             class="poa"
             :style="{
-              width: pageSize[0],
-              height: pageSize[1]
+              width: pageSize[0] + 'px',
+              height: pageSize[1] + 'px'
             }"
           />
         </div>
@@ -193,7 +193,8 @@ export default {
         end: null,
         duration: null,
         direction: null
-      }
+      },
+      DPR: appSetting.DPR // 设备像素比，canvas 的计算需要考虑这个
     }
   },
   computed: {
@@ -390,8 +391,10 @@ export default {
       }
       // 首先清屏
       // 采用这种方式清屏，是为了一并解决纸张大小变化的情况
-      textCtx.canvas.width = this.pageSize[0]
-      textCtx.canvas.height = this.pageSize[1]
+      textCtx.canvas.width = this.pageSize[0] * this.DPR
+      textCtx.canvas.height = this.pageSize[1] * this.DPR
+      // 画布缩放
+      textCtx.scale(this.DPR, this.DPR)
       // 重设画布大小后，绘图上下文会重置
       this.setTextCtx(textCtx)
       if (tempPageInfo) {
@@ -495,7 +498,7 @@ export default {
             this.changePage(1)
             this.initTouchData()
           } else {
-            this.changePage(1)
+            this.changePage(-1)
             this.initTouchData()
           }
         } else if (
