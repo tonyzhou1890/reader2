@@ -3,6 +3,7 @@
     id="book"
     class="book"
     v-loading="loading"
+    :element-loading-text="this.loadingText"
     :style="{
       left: (width - _bookSize[0]) / 2 + 'px',
       top: (height - _bookSize[1]) / 2 + 'px',
@@ -87,9 +88,9 @@
 
 <script>
 // import debounce from 'lodash/debounce'
+import Worker from '@/utils/utils.worker'
 import {
   measureChars,
-  textToPage,
   layout,
   renderPage,
   calcBookSize,
@@ -187,6 +188,7 @@ export default {
       full: false,
       single: false,
       loading: false,
+      loadingText: '',
       page: 0, // 当前页下标，小于 0 时为封面，大于等于 _data.pages.length 时为封底
       touchData: {
         start: null,
@@ -194,7 +196,8 @@ export default {
         duration: null,
         direction: null
       },
-      DPR: appSetting.DPR // 设备像素比，canvas 的计算需要考虑这个
+      DPR: appSetting.DPR, // 设备像素比，canvas 的计算需要考虑这个
+      worker: new Worker()
     }
   },
   computed: {
@@ -320,6 +323,7 @@ export default {
       if (!this.ctxOneText) return
       this.setTextCtx(this.ctxOneText)
       this.loading = true
+      this.loadingText = '分页中'
       let param = {}
       // 测量字符
       if (_data.cacheText !== this.text) {
@@ -339,9 +343,21 @@ export default {
         height: this.pageSize[1] - this.pagePadding[1] * 2,
         fontSize: this.fontSize,
         lineHeight: this.lineHeight,
-        measures: _data.measures
+        measures: _data.measures,
+        bookSetting
       }
-      _data.pages = textToPage(param)
+
+      // 在 worker 中分页
+      this.worker.addEventListener('message', this.getPages)
+      this.worker.postMessage({
+        action: 'textToPage',
+        param: [param],
+        timeStamp: Date.now()
+      })
+    },
+    // worker 分页结果
+    getPages(e) {
+      _data.pages = e.data.result
       // 分页后需要计算页码
       this.calcPage()
       // 以及渲染页面
@@ -351,6 +367,8 @@ export default {
         this.renderPage('two')
       }
       this.loading = false
+      this.loadingText = ''
+      this.worker.removeEventListener('message', this.getPages)
     },
     // 设置内容ctx样式
     setTextCtx(ctx) {

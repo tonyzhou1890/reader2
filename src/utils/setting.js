@@ -13,7 +13,8 @@ export const bookSetting = {
   prePunctuation: '([{·‘“〈《「『【〔〖（．［｛￡￥', // 前置标点
   postPunctuation: '!),.:;?]}¨·ˇˉ―‖’”…∶、。〃々〉》」』】〕〗！＂＇），．：；？］｀｜｝～￠', // 后置标点
   breakMaxChars: 3, // 提前断行回溯最大字符数
-  englishCharReg: /[A-Za-z']/, // 英文字符检测正则
+  // englishCharTest: /[A-Za-z']/, // 英文字符检测正则
+  englishChars: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'",
   englishMaxWrapChars: 5, // 英文提前换行最大字符数，否则添加连字符-
   hyphen: '-', // 连字符
   fontFamily: 'Microsoft YaHei',

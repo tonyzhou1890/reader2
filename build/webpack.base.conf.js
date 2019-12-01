@@ -52,6 +52,10 @@ module.exports = {
         include: [resolve('src'), resolve('test'), resolve('node_modules/webpack-dev-server/client')]
       },
       {
+        test: /\.worker\.js$/,
+        use: { loader: 'worker-loader' }
+      },
+      {
         test: /\.svg$/,
         loader: 'svg-sprite-loader',
         include: [resolve('src/icons')],
