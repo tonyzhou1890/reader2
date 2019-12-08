@@ -17,11 +17,35 @@ export const bookSetting = {
   englishChars: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'",
   englishMaxWrapChars: 5, // 英文提前换行最大字符数，否则添加连字符-
   hyphen: '-', // 连字符
-  fontFamily: 'Microsoft YaHei',
-  fontSize: 16,
-  lineHeight: 1.5,
-  color: '#333',
-  background: '#fff5ee',
+  fontFamily: 'Microsoft YaHei', // 默认字体
+  fontSize: 16, // 默认字体大小
+  lineHeight: 1.5, // 默认行高
+  color: '#333', // 默认字体颜色
+  background: '#fff5ee', // 默认背景色
+  fontFamilies: [ // 可选字体
+    {
+      value: 'Microsoft YaHei',
+      label: '微软雅黑'
+    },
+    {
+      value: 'KaiTi',
+      label: '楷体'
+    },
+    {
+      value: 'SimSun',
+      label: '宋体'
+    },
+    {
+      value: 'LiSu',
+      label: '隶书'
+    },
+    {
+      value: 'HeiTi',
+      label: '黑体'
+    }
+  ],
+  fontSizes: [12, 24], // 可选字体大小(最小-最大)
+  lineHeights: [1, 2], // 可选行高(最小-最大)
   title: '享阅·阅读器'
 }
 

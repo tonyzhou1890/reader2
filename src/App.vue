@@ -15,23 +15,35 @@
       :frontCoverPath="frontCoverPath"
       :backCoverPath="backCoverPath"
       @changePage="handleChangePage"
-    />
-    <div
-      v-show="showSetting"
-      :style="`z-index: 2`"
-      @click="toggleSetting"
-      class="middle-cover poa"></div>
-    <!-- <setting
-      v-show="showSetting"
-      :style="`z-index: 3;`"
-      :position="position"
-      :setting="setting"
-      :defaultSetting="defaultSetting"
-      :page="page"
-      :total="total"
-      @dataChange="settingChange"
-      @pageChange="changePage"
-    /> -->
+      @changePercent="handleChangePercent"
+      @showMenu="() => toggleMenu(true)"
+    >
+      <!-- 菜单 -->
+      <Menu
+        slot-scope="props"
+        @showMenu="() => toggleMenu(true)"
+        @closeMenu="() => toggleMenu(false)"
+        :show="showMenu"
+        :full="props.full"
+      >
+        <!-- 设置 -->
+        <Setting
+          slot='setting'
+          :show="showMenu"
+          :defaultSetting="defaultSetting"
+          :setting="setting"
+          @settingChange="handleSettingChange"></Setting>
+        <!-- 跳页 -->
+        <JumpPage
+          slot="jumpPage"
+          :show="showMenu"
+          :page="Number(page)"
+          :min="minPage"
+          :max="maxPage"
+          @jumpPage="handleJumpPage"
+        ></JumpPage>
+      </Menu>
+    </Book>
     <local
       v-if="showLocal"
       :style="`z-index: 4;`"
@@ -42,9 +54,11 @@
 
 <script>
 import axios from 'axios'
-import Setting from './components/Setting'
+import Setting from '@/components/Setting'
+import JumpPage from '@/components/JumpPage'
 import Local from './components/Local'
 import Book from './components/Book'
+import Menu from './components/Menu'
 import localforage from 'localforage'
 import { bookSetting, appSetting } from '@/utils/setting'
 import { getBookInfo, setBookInfo } from '@/utils/storage'
@@ -62,8 +76,10 @@ export default {
   name: 'App',
   components: {
     Setting,
+    JumpPage,
     Local,
-    Book
+    Book,
+    Menu
   },
   data() {
     return {
@@ -76,7 +92,8 @@ export default {
       percent: null,
       frontCoverPath: '',
       backCoverPath: '',
-      showSetting: false,
+      showMenu: false,
+      defaultSetting,
       setting: Object.assign({}, defaultSetting),
       type: 'local', // 打开方式：address、local、message
       mouseEvent: {
@@ -92,6 +109,17 @@ export default {
     }
   },
   computed: {
+    // 最小页码
+    minPage() {
+      let min = this.frontCoverPath ? 0 : 1
+      return min
+    },
+    // 最大页码
+    maxPage() {
+      let max = this.total !== null ? this.total : 1
+      max = this.backCoverPath ? max + 1 : max
+      return max
+    }
   },
   created() {
     this.settingSize()
@@ -100,20 +128,27 @@ export default {
     this.getSetting()
   },
   methods: {
+    // 监听 onresize
     watchClientSize() {
       window.addEventListener('resize', this._.debounce(this.settingSize, 500))
     },
+    // 获取body大小
     settingSize() {
       const s = window.getComputedStyle(document.body)
       this.width = Number(s.width.split('px')[0])
       this.height = Number(s.height.split('px')[0])
     },
-    pageChange(data) {
-      this.total = data.total
-      this.page = data.page
-      if (this.address || this.local) {
+    // 跳页
+    handleJumpPage(data) {
+      console.log(data)
+      if (data) {
+        this.page = data
+        this.percent = data / this.total
       }
+      this.toggleMenu()
+      this.saveBookInfo()
     },
+    // 解析url
     resolveUrl() {
       const temp = window.location.search.slice(1).split('&')
       temp.map((item, index) => {
@@ -210,34 +245,33 @@ export default {
         }
       }
     },
-    middleClick(e) {
-      if (e.type === 'mousedown') {
-        this.mouseEvent.down = e
-        const temp = document.getSelection().type
-        this.mouseEvent.lastSelectionType = temp
-        return
+    toggleMenu(show) {
+      let _show = !this.showMenu
+      if (show) {
+        _show = show
+      } else if (!show && show !== undefined) {
+        _show = false
       }
-      if (e.type === 'mouseup' && Math.abs(e.clientX - this.mouseEvent.down.clientX) < 1 && Math.abs(e.clientY - this.mouseEvent.down.clientY) < 1 && this.mouseEvent.lastSelectionType !== 'Range') {
-        const rect = this.$refs.book.$el.getBoundingClientRect()
-        const left = e.clientX - rect.left
-        if (left > rect.width / 3 && left < rect.width / 3 * 2) {
-          this.toggleSetting()
-        }
+      this.showMenu = _show
+    },
+    handleSettingChange(data) {
+      if (data) {
+        this.setting = Object.assign(this.setting, data)
       }
-      this.mouseEvent.down = null
-    },
-    toggleSetting() {
-      this.showSetting = !this.showSetting
-    },
-    settingChange(data) {
-      this.setting = Object.assign(this.setting, data)
-      this.toggleSetting()
+      this.toggleMenu()
       this.storeSetting()
     },
+    // 页码改变
     handleChangePage(val) {
-      this.percent = val.percent
+      this.page = val.page
+      this.total = val.totalPages
+    },
+    // 百分比改变
+    handleChangePercent(val) {
+      this.percent = val
       this.saveBookInfo()
     },
+    // 保存设置
     storeSetting() {
       localforage.setItem('setting', this.setting)
         .then(res => {})
@@ -249,6 +283,7 @@ export default {
           })
         })
     },
+    // 获取设置
     getSetting() {
       if (!window.localStorage) {
         this.$message({
@@ -257,10 +292,19 @@ export default {
         })
         return
       }
-      const s = localforage.getItem('setting')
-      if (s) {
-        this.setting = Object.assign(this.setting, s)
-      }
+      localforage.getItem('setting')
+        .then(res => {
+          if (res) {
+            this.setting = Object.assign(this.setting, res)
+          }
+        })
+        .catch(e => {
+          const m = JSON.parse(e.message)
+          this.$message({
+            type: 'error',
+            message: m.message
+          })
+        })
     },
     getLocalData(e) {
       getBookInfo(e.key)

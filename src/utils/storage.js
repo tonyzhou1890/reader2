@@ -1,5 +1,5 @@
 import localforage from 'localforage'
-const BOOKINFO = 'BOOKINFO'
+const BOOKINFO = 'bookInfo'
 
 /**
  * 获取缓存中的书籍信息
