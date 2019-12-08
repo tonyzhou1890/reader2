@@ -77,7 +77,7 @@ export default {
         },
         {
           key: 'jumpPage',
-          icon: '404',
+          icon: 'jump',
           text: '跳页'
         }
       ],
