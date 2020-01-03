@@ -32,6 +32,7 @@
           :show="showMenu"
           :defaultSetting="defaultSetting"
           :setting="setting"
+          @close="() => toggleMenu(false)"
           @settingChange="handleSettingChange"></Setting>
         <!-- 跳页 -->
         <JumpPage
@@ -40,6 +41,7 @@
           :page="Number(page)"
           :min="minPage"
           :max="maxPage"
+          @close="() => toggleMenu(false)"
           @jumpPage="handleJumpPage"
         ></JumpPage>
       </Menu>
@@ -144,9 +146,9 @@ export default {
       if (data) {
         this.page = data
         this.percent = data / this.total
+        this.saveBookInfo()
       }
       this.toggleMenu()
-      this.saveBookInfo()
     },
     // 解析url
     resolveUrl() {
@@ -257,9 +259,9 @@ export default {
     handleSettingChange(data) {
       if (data) {
         this.setting = Object.assign(this.setting, data)
+        this.storeSetting()
       }
       this.toggleMenu()
-      this.storeSetting()
     },
     // 页码改变
     handleChangePage(val) {

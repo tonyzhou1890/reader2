@@ -6,13 +6,13 @@
       :class="full ? '' : 'not-full-screen'"
     ></div>
     <!-- 侧边栏按钮 -->
-    <div v-if="!full" class="sidebar">
+    <div v-show="!full" class="sidebar">
       <div
         v-for="(item, index) in menuItems"
         :key="index"
-       class="menu-item"
-       :class="[active === item.key && show ? 'active' : '', show ? 'show' : '']"
-       @click="() => showMenu(item.key)"
+        class="menu-item"
+        :class="[active === item.key && show ? 'active' : '', show ? 'show' : '']"
+        @click="() => showMenu(item.key)"
       >
         <span class="menu-icon" :title="item.text">
           <svg-icon :icon-class="item.icon"></svg-icon>
@@ -27,7 +27,7 @@
       @click="closeMenu"
     >
       <!-- 非全屏 -->
-      <div class="menu-content-inner" v-if="!full">
+      <div class="menu-content-inner" v-show="!full">
         <div
           class="menu-content-inner-item"
           v-for="(item, index) in menuItems"
@@ -38,7 +38,7 @@
         </div>
       </div>
       <!-- 全屏 -->
-      <div class="menu-content-inner" v-else>
+      <div class="menu-content-inner" v-show="full">
         <el-tabs v-model="active">
           <el-tab-pane
             v-for="(item, index) in menuItems"

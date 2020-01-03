@@ -62,7 +62,7 @@ export default {
   methods: {
     // 关闭
     handleClose() {
-      this.$emit('jumpPage')
+      this.$emit('close')
     },
     // 确定
     handleSure() {

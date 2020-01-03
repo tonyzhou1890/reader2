@@ -97,7 +97,7 @@ export default {
   methods: {
     // 关闭
     handleClose() {
-      this.$emit('settingChange')
+      this.$emit('close')
     },
     // 确定
     handleSure() {
