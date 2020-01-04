@@ -79,6 +79,11 @@ export default {
           key: 'jumpPage',
           icon: 'jump',
           text: '跳页'
+        },
+        {
+          key: 'search',
+          icon: 'jump',
+          text: '搜索'
         }
       ],
       active: 'setting'
@@ -187,7 +192,6 @@ export default {
       .full;
       width: 300px;
       background-color: orange;
-      padding: 10px 20px;
       .menu-content-inner-item {
         .full;
       }

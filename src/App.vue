@@ -44,6 +44,14 @@
           @close="() => toggleMenu(false)"
           @jumpPage="handleJumpPage"
         ></JumpPage>
+        <!-- 搜索 -->
+        <Search
+          slot="search"
+          :min="minPage"
+          :max="maxPage"
+          @close="() => toggleMenu(false)"
+          @jumpPage="handleJumpPage"
+        ></Search>
       </Menu>
     </Book>
     <local
@@ -58,6 +66,7 @@
 import axios from 'axios'
 import Setting from '@/components/Setting'
 import JumpPage from '@/components/JumpPage'
+import Search from '@/components/Search'
 import Local from './components/Local'
 import Book from './components/Book'
 import Menu from './components/Menu'
@@ -79,6 +88,7 @@ export default {
   components: {
     Setting,
     JumpPage,
+    Search,
     Local,
     Book,
     Menu

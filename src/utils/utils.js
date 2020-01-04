@@ -1,5 +1,5 @@
 import { bookSetting } from '@/utils/setting'
-import { textToPage as _textToPage } from '@/utils/pureUtils'
+import { textToPage as _textToPage, findSubArray, arrayCopy } from '@/utils/pureUtils'
 let { prePunctuation, postPunctuation } = bookSetting
 /**
  * 测量字符
@@ -341,7 +341,80 @@ export function supportFamily(ctx) {
   }
 }
 
-export default {
-  measureChars,
-  textToPage
+/**
+ * 文本搜索
+ * @param {Object} param 参数对象
+ * param: {
+ *    textArray: ['a', 'b'], 文本数组
+ *    pages: [], // 分页数据
+ *    keyword: 'ddd', // 搜索关键字
+ *    startIndex: 0 // 开始搜索位置
+ * }
+ * @return {Object|false}
+ * 返回值：{
+ *    startIndex: 0, // 开始位置
+ *    keyword: 'a', // 搜索关键字
+ *    isAll: false, // 是否全部结果
+ *    results: [
+ *      {
+ *        startIndex: 2, // 结果开始位置
+ *        keywordStartIndex: 3, // 关键字开始位置
+ *        page: 1, // 结果页码
+ *        strings: [ // 结果文本片段
+ *          {
+ *            text: 'add', // 文本
+ *            isKeyword: false // 此文本是否为关键字
+ *          }
+ *        ]
+ *      }
+ *    ]
+ * }
+ */
+export function search(param) {
+  let searchResult = findSubArray(param.textArray, [...param.keyword], param.startIndex, bookSetting.maxSearchResult + 1)
+  let resLen = searchResult.length
+  if (resLen) {
+    let res = {
+      startIndex: param.startIndex,
+      keyword: param.keyword,
+      isAll: !(resLen >= bookSetting.maxSearchResult + 1),
+      results: []
+    }
+    searchResult.map(item => {
+      let temp = {
+        startIndex: item < bookSetting.searchResultPadding ? 0 : item - bookSetting.searchResultPadding,
+        keywordStartIndex: item,
+        strings: []
+      }
+      // 页码
+      param.pages.map((page, pageIndex) => {
+        if (page.startIndex <= item && page.endIndex >= item) {
+          temp.page = pageIndex + 1
+        }
+      })
+      // 关键字之前
+      temp.strings.push({
+        text: arrayCopy(param.textArray, temp.startIndex, item - 1).join(''),
+        isKeyword: false
+      })
+      // 关键字
+      temp.strings.push({
+        text: param.keyword,
+        isKeyword: true
+      })
+      // 关键字之后
+      temp.strings.push({
+        text: arrayCopy(param.textArray, item + param.keyword.length, item + param.keyword.length + bookSetting.searchResultPadding).join(''),
+        isKeyword: false
+      })
+      res.results.push(temp)
+    })
+    // 如果搜索结果比较多--超过指定数目，需要去掉最后一个，因为最后一个是用来确定是否已经全部搜索的
+    if (!res.isAll) {
+      res.results.pop()
+    }
+    return res
+  } else {
+    return false
+  }
 }

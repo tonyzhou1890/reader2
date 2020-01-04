@@ -280,3 +280,60 @@ export function textToPage(param) {
     return temp
   }
 }
+
+/**
+ * 查找子数组
+ * @param {Array} parentArray 父数组
+ * @param {Array} subArray 子数组
+ * @param {Number} startIndex 开始查找下标，可选
+ * @param {Number} number 需要的结果数量
+ */
+export function findSubArray(parentArray = [], subArray = [], startIndex = 0, number = Infinity) {
+  let res = []
+  let parentLen = parentArray.length
+  let subLen = subArray.length
+  // 如果有一个为空数组，或者 startIndex 大于等于父数组长度，或者 number 为0，直接返回空数组
+  if (parentLen === 0 || subLen === 0 || startIndex >= parentLen || number === 0) {
+    return []
+  }
+
+  // 第二层循环不使用 every 或者 some 是出于性能的考虑
+  for (let i = startIndex; i < parentLen; i++) {
+    let flag = true
+    for (let j = 0; j < subLen; j++) {
+      if (subArray[j] !== parentArray[i + j]) {
+        flag = false
+        break
+      }
+    }
+    if (flag) {
+      res.push(i)
+    }
+    if (res.length >= number) {
+      break
+    }
+  }
+
+  return res
+}
+
+/**
+ * 数组浅拷贝
+ * @param {Array} arr 原数组
+ * @param {Number} startIndex 开始索引
+ * @param {Number} endIndex 结束索引
+ */
+export function arrayCopy(arr = [], startIndex = 0, endIndex = 0) {
+  let _len = arr.length
+  let _start = startIndex < 0 ? 0 : startIndex
+  let _end = endIndex >= _len ? _len - 1 : endIndex
+  if (_len === 0) {
+    return []
+  } else {
+    let temp = []
+    for (; _start <= _end; _start++) {
+      temp.push(arr[_start])
+    }
+    return temp
+  }
+}
