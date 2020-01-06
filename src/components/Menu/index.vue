@@ -34,7 +34,7 @@
           v-show="active === item.key"
           :key="index"
         >
-          <slot :name="item.key"></slot>
+          <slot :name="item.key" :activeMenu="active"></slot>
         </div>
       </div>
       <!-- 全屏 -->
@@ -46,7 +46,7 @@
             :name="item.key"
             :label="item.text"
           >
-            <slot :name="item.key"></slot>
+            <slot :name="item.key" :activeMenu="active"></slot>
           </el-tab-pane>
         </el-tabs>
       </div>
@@ -84,6 +84,11 @@ export default {
           key: 'search',
           icon: 'search',
           text: '搜索'
+        },
+        {
+          key: 'chapterList',
+          icon: 'chapter',
+          text: '目录'
         }
       ],
       active: 'setting'
@@ -91,8 +96,12 @@ export default {
   },
   methods: {
     showMenu(which) {
-      this.$emit('showMenu')
-      this.active = which
+      if (which !== this.active || !this.show) {
+        this.$emit('showMenu')
+        this.active = which
+      } else {
+        this.closeMenu()
+      }
     },
     // 关闭菜单
     closeMenu(e) {
@@ -194,6 +203,15 @@ export default {
       background-color: orange;
       .menu-content-inner-item {
         .full;
+      }
+      /deep/ .el-tabs {
+        height: 100%;
+        .el-tabs__content {
+          height: calc(100% - 40px);
+          .el-tab-pane {
+            height: 100%;
+          }
+        }
       }
     }
   }

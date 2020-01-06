@@ -337,3 +337,93 @@ export function arrayCopy(arr = [], startIndex = 0, endIndex = 0) {
     return temp
   }
 }
+
+/**
+ * 分章
+ * @param {Object} param 参数对象
+ * param {
+ *    textArray: [], // 文本数组
+ *    titleLineLength: 30 // 标题文本长度
+ * }
+ * @return {Array} 对象数组
+ * 对象参考 checkChapter
+ */
+export function splitChapter(param) {
+  let s = Date.now()
+  const { textArray, titleLineLength } = param
+  const len = textArray.length
+  if (len === 0) {
+    return []
+  }
+  const res = []
+  // 第一行开始没有换行符，直接检测
+  let checkTemp = null
+  checkTemp = checkChapter({
+    textArray,
+    index: 0,
+    titleLineLength
+  })
+  if (checkTemp) {
+    res.push({
+      ...checkTemp
+    })
+  }
+
+  // 其余的从换行符后开始检测
+  for (let i = 1; i < len; i++) {
+    if (textArray[i] === '\n' && textArray[i + 1]) {
+      checkTemp = checkChapter({
+        textArray,
+        index: i + 1,
+        titleLineLength
+      })
+      if (checkTemp) {
+        res.push({
+          ...checkTemp
+        })
+      }
+    }
+  }
+  console.log('splitChapter:', Date.now() - s)
+  return res
+}
+
+/**
+ * 检测是否是章节标题--包括‘序言’之类的
+ * @param {Object} param 对象参数
+ * param {
+ *    textArray: [], // 文本数组
+ *    index: 1, // 行开始索引
+ *    titleLineLength: 30 // 标题文本长度
+ * }
+ * @return {Boolean|Object}
+ * 返回值：{
+ *    index: 1, 行开始字符索引
+ *    str: 'ddd', 标题字符串
+ *    strArray: ['a'] 标题行
+ * }
+ */
+export function checkChapter(param) {
+  const { textArray, index, titleLineLength } = param
+  const specialTitle = ['序言', '总序', '前言', '后记']
+  let tempIndex = textArray.indexOf('\n', index)
+  if (tempIndex > -1 && tempIndex < index + titleLineLength) {
+    const strArray = arrayCopy(textArray, index, tempIndex)
+    // 排除两边空字符的影响
+    const str = strArray.join('').trim()
+    if (str.length && (
+      specialTitle.includes(str) ||
+      /^第?[0-9 一二三四五六七八九十百千万]+[章回篇节]( \S+)?$/.test(str)
+    )) {
+      return {
+        index,
+        str,
+        strArray
+      }
+    } else {
+      return false
+    }
+  } else {
+    return false
+  }
+}

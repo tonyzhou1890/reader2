@@ -20,38 +20,61 @@
     >
       <!-- 菜单 -->
       <Menu
-        slot-scope="props"
+        slot-scope="menuProps"
         @showMenu="() => toggleMenu(true)"
         @closeMenu="() => toggleMenu(false)"
         :show="showMenu"
-        :full="props.full"
+        :full="menuProps.full"
       >
         <!-- 设置 -->
-        <Setting
+        <template
           slot='setting'
-          :show="showMenu"
-          :defaultSetting="defaultSetting"
-          :setting="setting"
-          @close="() => toggleMenu(false)"
-          @settingChange="handleSettingChange"></Setting>
+          slot-scope="props"
+        >
+          <Setting
+            :show="showMenu"
+            :defaultSetting="defaultSetting"
+            :setting="setting"
+            :activeMenu="props.activeMenu"
+            @close="() => toggleMenu(false)"
+            @settingChange="handleSettingChange"></Setting>
+        </template>
         <!-- 跳页 -->
-        <JumpPage
+        <template
           slot="jumpPage"
-          :show="showMenu"
-          :page="Number(page)"
-          :min="minPage"
-          :max="maxPage"
-          @close="() => toggleMenu(false)"
-          @jumpPage="handleJumpPage"
-        ></JumpPage>
+          slot-scope="props">
+          <JumpPage
+            :show="showMenu"
+            :page="Number(page)"
+            :min="minPage"
+            :max="maxPage"
+            :activeMenu="props.activeMenu"
+            @close="() => toggleMenu(false)"
+            @jumpPage="handleJumpPage"
+          ></JumpPage>
+        </template>
         <!-- 搜索 -->
-        <Search
+        <template
           slot="search"
-          :min="minPage"
-          :max="maxPage"
-          @close="() => toggleMenu(false)"
-          @jumpPage="handleJumpPage"
-        ></Search>
+          slot-scope="props">
+          <Search
+            :min="minPage"
+            :max="maxPage"
+            :activeMenu="props.activeMenu"
+            @close="() => toggleMenu(false)"
+            @jumpPage="handleJumpPage"
+          ></Search>
+        </template>
+        <!-- 目录 -->
+        <template
+          slot="chapterList"
+          slot-scope="props">
+          <ChapterList
+            :page="Number(page)"
+            :activeMenu="props.activeMenu"
+            @jumpPage="handleJumpPage"
+          ></ChapterList>
+        </template>
       </Menu>
     </Book>
     <local
@@ -67,6 +90,7 @@ import axios from 'axios'
 import Setting from '@/components/Setting'
 import JumpPage from '@/components/JumpPage'
 import Search from '@/components/Search'
+import ChapterList from '@/components/ChapterList'
 import Local from './components/Local'
 import Book from './components/Book'
 import Menu from './components/Menu'
@@ -89,6 +113,7 @@ export default {
     Setting,
     JumpPage,
     Search,
+    ChapterList,
     Local,
     Book,
     Menu

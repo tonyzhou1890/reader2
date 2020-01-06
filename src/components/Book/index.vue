@@ -112,7 +112,6 @@ let {
   pagePadding,
   menuWidth
 } = bookSetting
-let _data = window._data
 // let _calcBookSize = debounce(calcBookSize, 100)
 export default {
   name: 'Book',
@@ -188,7 +187,7 @@ export default {
       single: false,
       loading: false,
       loadingText: '',
-      page: 0, // 当前页下标，小于 0 时为封面，大于等于 _data.pages.length 时为封底
+      page: 0, // 当前页下标，小于 0 时为封面，大于等于 this._bookData.pages.length 时为封底
       touchData: { // 触摸事件数据
         start: null,
         end: null,
@@ -229,7 +228,7 @@ export default {
     showWhat() {
       if (this.frontCoverPath && this.page < 0) {
         return 'frontCover'
-      } else if (this.backCoverPath && this.page >= _data.pages.length) {
+      } else if (this.backCoverPath && this.page >= this._bookData.pages.length) {
         return 'backCover'
       } else {
         return 'content'
@@ -331,6 +330,7 @@ export default {
       ['full', 'single', 'pageSize', 'bookSize', 'pagePadding'].map(key => {
         _this[key] = res[key]
       })
+      this._bookData.single = res.single
       this.textToPage()
     },
     // 分页
@@ -347,18 +347,34 @@ export default {
           ctx: this.ctxOneText
         }
         let res = measureChars(param)
-        _data.measures = res.measures
-        _data.textArray = res.textArray
-        _data.cacheText = this.text
+        this._bookData.measures = res.measures
+        this._bookData.textArray = res.textArray
+        this._bookData.cacheText = this.text
       }
+
+      // 计算章节
+      if (!this._bookData.chapters || measure) {
+        param = {
+          textArray: this._bookData.textArray,
+          titleLineLength: bookSetting.titleLineLength
+        }
+        // 在 worker 中计算章节
+        this.worker.addEventListener('message', this.getChapters)
+        this.worker.postMessage({
+          action: 'splitChapter',
+          param: [param],
+          timeStamp: Date.now()
+        })
+      }
+
       // 计算分页
       param = {
-        text: _data.textArray,
+        text: this._bookData.textArray,
         width: this.pageSize[0] - this.pagePadding[0] * 2,
         height: this.pageSize[1] - this.pagePadding[1] * 2,
         fontSize: this.fontSize,
         lineHeight: this.lineHeight,
-        measures: _data.measures,
+        measures: this._bookData.measures,
         bookSetting
       }
 
@@ -370,9 +386,15 @@ export default {
         timeStamp: Date.now()
       })
     },
+    // worker 分章结果
+    getChapters(e) {
+      if (e.data.action !== 'splitChapter') return
+      this._bookData.chapters = e.data.result
+    },
     // worker 分页结果
     getPages(e) {
-      _data.pages = e.data.result
+      if (e.data.action !== 'textToPage') return
+      this._bookData.pages = e.data.result
       // 分页后需要计算页码
       this.calcPage()
       // 以及渲染页面
@@ -403,7 +425,7 @@ export default {
         page += 1
         textCtx = this.ctxTwoText
       }
-      const tempPageInfo = _data.pages[page]
+      const tempPageInfo = this._bookData.pages[page]
       // 如果计算过每个文字的位置，则先计算
       if (
         tempPageInfo &&
@@ -418,9 +440,9 @@ export default {
           paddingTop: this.pagePadding[1],
           fontSize: this.fontSize,
           lineHeight: this.lineHeight,
-          measures: _data.measures
+          measures: this._bookData.measures
         }
-        _data.pages[page].rows = layout(param)
+        this._bookData.pages[page].rows = layout(param)
       }
       // 首先清屏
       // 采用这种方式清屏，是为了一并解决纸张大小变化的情况
@@ -442,17 +464,17 @@ export default {
           fontSize: this.fontSize,
           headerText: this.title,
           headerTextAlign: two ? 'right' : 'left',
-          footerText: `${page + 1}/${_data.pages.length}`
+          footerText: `${page + 1}/${this._bookData.pages.length}`
         }
         // 绘制页面
         renderPage(renderParam)
       }
     },
-    // 根据 percent 和 _data.pages 计算 page
+    // 根据 percent 和 this._bookData.pages 计算 page
     calcPage() {
       let tempPage = this.frontCoverPath ? -1 : 0
-      if (_data && Array.isArray(_data.pages) && _data.pages.length) {
-        let len = _data.pages.length
+      if (this._bookData && Array.isArray(this._bookData.pages) && this._bookData.pages.length) {
+        let len = this._bookData.pages.length
         // let odd = len % 2
         // 百分比下限
         if (this.percent <= 0) {
@@ -493,7 +515,7 @@ export default {
       }
       this.$emit('changePage', {
         page: this.page + 1,
-        totalPages: _data.pages.length
+        totalPages: this._bookData.pages.length
       })
     },
     // 鼠标滚动
@@ -583,7 +605,7 @@ export default {
     },
     // 页码改变
     changePage(direction) {
-      let len = _data.pages.length
+      let len = this._bookData.pages.length
       let percent = 0
       // 如果没有内容
       if (len === 0) {

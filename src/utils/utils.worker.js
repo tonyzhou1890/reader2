@@ -1,7 +1,8 @@
-import { textToPage } from '@/utils/pureUtils'
+import { textToPage, splitChapter } from '@/utils/pureUtils'
 
 const utils = {
-  textToPage
+  textToPage,
+  splitChapter
 }
 
 onmessage = (e) => {

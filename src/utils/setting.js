@@ -48,7 +48,8 @@ export const bookSetting = {
   lineHeights: [1, 2], // 可选行高(最小-最大)
   title: '享阅·阅读器',
   maxSearchResult: 50, // 最多搜索结果
-  searchResultPadding: 10 // 搜索结果字符串两边填充额外字符串长度
+  searchResultPadding: 10, // 搜索结果字符串两边填充额外字符串长度
+  titleLineLength: 30 // 标题行检测字符串长度
 }
 
 /**

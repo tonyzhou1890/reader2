@@ -63,7 +63,6 @@
 
 <script>
 import { search } from '@/utils/utils'
-let _data = window._data
 export default {
   name: 'Search',
   props: {
@@ -109,19 +108,18 @@ export default {
     handleSearch() {
       if (!this.keyword.trim()) {
         this.$message.error('请输入关键字')
-      } else if (!_data || !_data.textArray || !_data.pages || !Array.isArray(_data.pages)) {
+      } else if (!this._bookData || !this._bookData.textArray || !this._bookData.pages || !Array.isArray(this._bookData.pages)) {
         this.$message.error('没有可以搜索的文本')
       } else if (this.bindPage < this.min || this.bindPage > this.max) {
         this.$message.error(`页码错误，请输入${this.min}-${this.max}之间的值`)
       } else {
         let param = {
-          textArray: _data.textArray,
+          textArray: this._bookData.textArray,
           keyword: this.keyword,
-          startIndex: _data.pages[this.bindPage].startIndex,
-          pages: _data.pages
+          startIndex: this._bookData.pages[this.bindPage].startIndex,
+          pages: this._bookData.pages
         }
         this.searchResult = search(param) || {}
-        console.log(this.searchResult)
       }
     },
     // 跳页
