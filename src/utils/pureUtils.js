@@ -413,7 +413,8 @@ export function checkChapter(param) {
     const str = strArray.join('').trim()
     if (str.length && (
       specialTitle.includes(str) ||
-      /^第?[0-9 一二三四五六七八九十百千万]+[章回篇节]( \S+)?$/.test(str)
+      // eslint-disable-next-line no-irregular-whitespace
+      /^第?[0-9 一二三四五六七八九十百千万]+[章回篇节]([ \t　]\S+)*$/.test(str)
     )) {
       return {
         index,
