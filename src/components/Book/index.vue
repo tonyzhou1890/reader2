@@ -22,7 +22,7 @@
         background
       }"
       tabindex="-1"
-      @mousewheel="handleMousewheel"
+      @wheel="handleMousewheel"
       @keydown.right="(e) => changePage(1)"
       @keydown.left="(e) => changePage(-1)"
       @touchstart="touch"
@@ -498,7 +498,7 @@ export default {
     },
     // 鼠标滚动
     handleMousewheel(e) {
-      e.wheelDelta > 0 ? this.changePage(-1) : this.changePage(1)
+      e.wheelDelta > 0 || e.deltaY < 0 ? this.changePage(-1) : this.changePage(1)
     },
     // 触摸
     tap(e) {

@@ -82,7 +82,7 @@ export default {
         },
         {
           key: 'search',
-          icon: 'jump',
+          icon: 'search',
           text: '搜索'
         }
       ],

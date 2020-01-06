@@ -1,5 +1,5 @@
 <template>
-  <div class="setting-container" @scroll="wheel">
+  <div class="setting-container">
     <el-form
       label-width="80px"
     >
@@ -123,10 +123,6 @@ export default {
         this.searchResult = search(param) || {}
         console.log(this.searchResult)
       }
-    },
-    // 滚动
-    wheel(e) {
-      console.log(e)
     },
     // 跳页
     jumpPage(index, page) {
