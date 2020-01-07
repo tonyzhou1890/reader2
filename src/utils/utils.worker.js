@@ -6,12 +6,13 @@ const utils = {
 }
 
 onmessage = (e) => {
-  const { action, param, timestamp } = e.data
+  const { action, param, timestamp, _sign } = e.data
   if (typeof utils[action] === 'function') {
     const res = {
       action,
       result: utils[action](...param),
-      timestamp
+      timestamp,
+      _sign
     }
     postMessage(res)
   } else {

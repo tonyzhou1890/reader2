@@ -359,12 +359,13 @@ export default {
           titleLineLength: bookSetting.titleLineLength
         }
         // 在 worker 中计算章节
-        this.worker.addEventListener('message', this.getChapters)
-        this.worker.postMessage({
+        this._worker({
           action: 'splitChapter',
-          param: [param],
-          timeStamp: Date.now()
+          param: [param]
         })
+          .then(res => {
+            this.getChapters(res.e)
+          })
       }
 
       // 计算分页
@@ -379,12 +380,13 @@ export default {
       }
 
       // 在 worker 中分页
-      this.worker.addEventListener('message', this.getPages)
-      this.worker.postMessage({
+      this._worker({
         action: 'textToPage',
-        param: [param],
-        timeStamp: Date.now()
+        param: [param]
       })
+        .then(res => {
+          this.getPages(res.e)
+        })
     },
     // worker 分章结果
     getChapters(e) {

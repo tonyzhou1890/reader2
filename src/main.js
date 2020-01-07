@@ -4,6 +4,7 @@ import 'babel-polyfill'
 // import '@/utils/firstRun'
 import Vue from 'vue'
 import App from './App'
+import promiseWorker from '@/utils/promiseWorker'
 
 import 'normalize.css/normalize.css' // A modern alternative to CSS resets
 
@@ -52,6 +53,9 @@ let _data = {
 }
 window._data = _data
 Vue.prototype._bookData = _data
+
+// worker 线程挂到 Vue 上，方便调用
+Vue.prototype._worker = promiseWorker
 
 Vue.config.productionTip = false
 
