@@ -11,6 +11,7 @@
       :fontFamily="setting.fontFamily"
       :fontSize="setting.fontSize"
       :lineHeight="setting.lineHeight"
+      :renderChapter="setting.renderChapter"
       :percent="percent"
       :frontCoverPath="frontCoverPath"
       :backCoverPath="backCoverPath"
@@ -98,14 +99,15 @@ import localforage from 'localforage'
 import { bookSetting, appSetting } from '@/utils/setting'
 import { getBookInfo, setBookInfo } from '@/utils/storage'
 import { appErrorInfo } from '@/utils/error'
-let { fontFamily, fontSize, lineHeight, color, background } = bookSetting
+let { fontFamily, fontSize, lineHeight, color, background, renderChapter } = bookSetting
 let { title } = appSetting
 const defaultSetting = {
   fontFamily,
   fontSize,
   lineHeight,
   color,
-  background
+  background,
+  renderChapter
 }
 export default {
   name: 'App',

@@ -46,6 +46,7 @@ export const bookSetting = {
   ],
   fontSizes: [12, 24], // 可选字体大小(最小-最大)
   lineHeights: [1, 2], // 可选行高(最小-最大)
+  renderChapter: true, // 分章排版
   title: '享阅·阅读器',
   maxSearchResult: 50, // 最多搜索结果
   searchResultPadding: 10, // 搜索结果字符串两边填充额外字符串长度

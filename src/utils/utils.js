@@ -1,6 +1,5 @@
 import { bookSetting } from '@/utils/setting'
 import { textToPage as _textToPage, findSubArray, arrayCopy } from '@/utils/pureUtils'
-let { prePunctuation, postPunctuation } = bookSetting
 /**
  * 测量字符
  * @param {Object} param // 参数对象
@@ -23,7 +22,7 @@ export function measureChars(param) {
   // 将文本转成数组，防止四字节字符问题
   let textArray = Array.from(param.text)
   // 加上额外需要测量的字符
-  let tempArr = textArray.concat([...prePunctuation, ...postPunctuation, bookSetting.hyphen, '阅'])
+  let tempArr = textArray.concat([bookSetting.hyphen, '阅'])
   console.log('  tempArr:', Date.now() - s)
   // 第一种，先去重，然后测量
   // // 去重

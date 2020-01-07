@@ -102,6 +102,7 @@ import {
   calcBookSize,
   supportFamily
 } from '@/utils/utils'
+import { arrayCopy } from '@/utils/pureUtils'
 import { bookSetting, appSetting } from '@/utils/setting'
 let {
   defaultPageSize,
@@ -172,6 +173,10 @@ export default {
     backCoverPath: {
       type: String,
       default: ''
+    },
+    renderChapter: { // 是否分章排版
+      type: Boolean,
+      default: true
     }
   },
   data() {
@@ -354,6 +359,8 @@ export default {
 
       // 计算章节
       if (!this._bookData.chapters || measure) {
+        // 分章之前重置章节为 null
+        this._bookData.chapters = null
         param = {
           textArray: this._bookData.textArray,
           titleLineLength: bookSetting.titleLineLength
@@ -365,28 +372,76 @@ export default {
         })
           .then(res => {
             this.getChapters(res.e)
+            _textToPage(this)
           })
       }
 
       // 计算分页
-      param = {
-        text: this._bookData.textArray,
-        width: this.pageSize[0] - this.pagePadding[0] * 2,
-        height: this.pageSize[1] - this.pagePadding[1] * 2,
-        fontSize: this.fontSize,
-        lineHeight: this.lineHeight,
-        measures: this._bookData.measures,
-        bookSetting
-      }
+      _textToPage(this)
 
-      // 在 worker 中分页
-      this._worker({
-        action: 'textToPage',
-        param: [param]
-      })
-        .then(res => {
-          this.getPages(res.e)
-        })
+      // 分页
+      function _textToPage(self) {
+        // 如果需要分章排版，但章节还没有计算出来，直接返回
+        if (self.renderChapter && !self._bookData.chapters) return
+
+        param = {
+          text: self._bookData.textArray,
+          textOffsetIndex: 0,
+          width: self.pageSize[0] - self.pagePadding[0] * 2,
+          height: self.pageSize[1] - self.pagePadding[1] * 2,
+          fontSize: self.fontSize,
+          lineHeight: self.lineHeight,
+          measures: self._bookData.measures,
+          bookSetting
+        }
+
+        // 如果需要分章排版，并且计算后存在章节信息，则分章排版
+        if (self.renderChapter && self._bookData.chapters.length) {
+          // 每个章节就是一个任务
+          // 需要检查第一个章节之前是否还有内容
+          let tasks = [...self._bookData.chapters]
+          if (tasks[0].startIndex !== 0) {
+            tasks.unshift({
+              startIndex: 0,
+              endIndex: tasks[0].startIndex - 1
+            })
+          }
+          // 设置任务
+          tasks = tasks.map(chapter => {
+            return self._worker({
+              action: 'textToPage',
+              param: [{
+                ...param,
+                textOffsetIndex: chapter.startIndex,
+                text: arrayCopy(self._bookData.textArray, chapter.startIndex, chapter.endIndex)
+              }]
+            })
+          })
+
+          const s = Date.now()
+          Promise.all(tasks)
+            .then(res => {
+              console.log('textToPage:', Date.now() - s)
+              let tempRes = res.map(item => item.result)
+              // 删除空页
+              tempRes = tempRes.flat().filter(page => page.rows.some(row => row.chars.join('').trim().length))
+              // 重新设置页码
+              tempRes.map((item, index) => {
+                item.page = index
+              })
+              self.getPages(tempRes)
+            })
+        } else {
+          // 在 worker 中分页
+          self._worker({
+            action: 'textToPage',
+            param: [param]
+          })
+            .then(res => {
+              self.getPages(res.result)
+            })
+        }
+      }
     },
     // worker 分章结果
     getChapters(e) {
@@ -394,9 +449,8 @@ export default {
       this._bookData.chapters = e.data.result
     },
     // worker 分页结果
-    getPages(e) {
-      if (e.data.action !== 'textToPage') return
-      this._bookData.pages = e.data.result
+    getPages(res) {
+      this._bookData.pages = res
       // 分页后需要计算页码
       this.calcPage()
       // 以及渲染页面
@@ -407,7 +461,6 @@ export default {
       }
       this.loading = false
       this.loadingText = ''
-      this.worker.removeEventListener('message', this.getPages)
     },
     // 设置内容ctx样式
     setTextCtx(ctx) {

@@ -3,6 +3,7 @@
  * @param {Object} param 参数对象
  * param {
  *    text: [], // 文本
+ *    textOffsetIndex: 0, // 文本开始下标偏移量，比如分章节的时候
  *    width: null,  // 版心宽度
  *    height: null, // 版心高度
  *    fontSize: null, // 字体大小
@@ -32,7 +33,6 @@ export function textToPage(param) {
   if (!param.text.length) {
     return []
   }
-  let s = Date.now()
   // 后面使用的变量
   const { bookSetting } = param
   const { prePunctuation, postPunctuation } = bookSetting
@@ -164,7 +164,17 @@ export function textToPage(param) {
   // 最后一页的最后一行不需要填充空隙
   let tempRowLen = pages[page - 1].rows.length
   pages[page - 1].rows[tempRowLen - 1].completed = false
-  console.log('textToPage:', Date.now() - s)
+
+  // 对页和行进行章节偏移量处理
+  for (let i = 0; i < page; i++) {
+    pages[i].startIndex += _params.textOffsetIndex
+    pages[i].endIndex += _params.textOffsetIndex
+    const rowsLen = pages[i].rows.length
+    for (let r = 0; r < rowsLen; r++) {
+      pages[i].rows[r].startIndex += _params.textOffsetIndex
+      pages[i].rows[r].endIndex += _params.textOffsetIndex
+    }
+  }
   // 返回结果
   return pages
 
@@ -332,7 +342,7 @@ export function arrayCopy(arr = [], startIndex = 0, endIndex = 0) {
   } else {
     let temp = []
     for (; _start <= _end; _start++) {
-      temp.push(arr[_start])
+      temp[temp.length] = arr[_start]
     }
     return temp
   }
@@ -385,6 +395,11 @@ export function splitChapter(param) {
     }
   }
   console.log('splitChapter:', Date.now() - s)
+  // 添加每个章节的 startIndex 和 endIndex
+  res.map((item, index) => {
+    item.startIndex = item.index
+    item.endIndex = res[index + 1] ? res[index + 1].index - 1 : textArray.length - 1
+  })
   return res
 }
 
