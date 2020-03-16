@@ -266,6 +266,7 @@ export default {
                   }
 
                   this.text = res.data
+                  this.title = this.message.data.title
                   this.frontCoverPath = this.message.data.frontCoverPath
                   this.backCoverPath = this.message.data.backCoverPath
                   this.loading = false
