@@ -173,6 +173,9 @@ export default {
     },
     // 获取body大小
     settingSize() {
+      // 如果是输入框聚焦导致的窗口大小变化，不处理
+      const tagName = document.activeElement ? document.activeElement.tagName : null
+      if (['INPUT', 'TEXTAREA'].includes(tagName)) return
       const s = window.getComputedStyle(document.body)
       this.width = Number(s.width.split('px')[0])
       this.height = Number(s.height.split('px')[0])
@@ -259,7 +262,9 @@ export default {
               getBookInfo(this.message.data.uuid)
                 .then(bookInfo => {
                   // 设置percent
-                  if (bookInfo && this.message.data.updateTime && bookInfo.updateTime > new Date(this.message.data.updateTime).getTime()) {
+                  // 用本地的情况
+                  // 1. 线上没有，2. 本地进度较新
+                  if (bookInfo && (!this.message.data.updateTime || (bookInfo.updateTime > new Date(this.message.data.updateTime).getTime()))) {
                     this.percent = bookInfo.percent
                   } else {
                     this.percent = this.message.data.percent ? this.message.data.percent * 100 : null
