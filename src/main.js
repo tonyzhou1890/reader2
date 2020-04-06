@@ -15,8 +15,8 @@ import '../theme/index.css'
 import { Row, Col, Button, Input, InputNumber, Select, Option, Upload, Slider, ColorPicker, Message, MessageBox, Loading, Form, FormItem, Tabs, TabPane } from 'element-ui'
 
 import localforage from 'localforage'
-
 import debounce from 'lodash/debounce'
+import Clipboard from 'clipboard'
 
 window.localforage = localforage
 
@@ -43,6 +43,7 @@ Vue.prototype.$message = Message
 Vue.prototype._ = {
   debounce
 }
+Vue.prototype.Clipboard = Clipboard
 
 // 不需要响应式，并且量比较大的数据放到 _data 里
 let _data = {

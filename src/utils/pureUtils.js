@@ -443,3 +443,352 @@ export function checkChapter(param) {
     return false
   }
 }
+
+/**
+ * 根据页面像素位置查找字符--偏差值：0.5个字宽
+ * @param {*} param 对象参数
+ * param {
+ *    point: [0, 0], // 像素位置
+ *    page: { // 当前页信息
+ *      startIndex: 0,
+ *      endIndex: 100,
+ *      page: 1,
+ *      rows: [{
+ *        startIndex: 0,
+ *        endIndex: 10,
+ *        completed: true,
+ *        chars: [
+ *          {
+ *            char: 'a',
+ *            position: [100, 100, 116, 116], // 字符绘制位置
+ *          }
+ *        ],
+ *        charsSpace: [100, 100, 300, 116], // 此行字符占据的空间，除了换行，基本占据整行
+ *        rowSpace: [100, 100, 300, 124], // 此行占据的空间，都是占据整行
+ *      }]
+ *    },
+ *    direction: true or false // 查找方向-true: 向后，false: 向前
+ * }
+ * @return {Null|Object}
+ * 返回值：{
+ *    char: '', // 字符
+ *    index: 0, // 索引
+ * }
+ */
+export function findCharInPageByPoint(param) {
+  const { point, page, direction } = param
+  const { rows } = page
+  let row = null // 哪一行
+  let rowIndex = null // 哪一行索引
+  let rowLen = rows.length // 行数
+  let res = null // 结果
+  // 找出位于哪一行
+  if (point[1] < rows[0].rowSpace[1]) { // 如果在第一行之前
+    // 如果向后查找，则算第一行；否则不处理
+    if (direction) {
+      row = rows[0]
+      rowIndex = 0
+    }
+  } else if (point[1] >= rows[rowLen - 1].rowSpace[3]) { // 如果在最后一行之后
+    // 如果向前查找，则算最后一行
+    if (!direction) {
+      row = rows[rowLen - 1]
+      rowIndex = rowLen - 1
+    }
+  } else { // 其余情况遍历查找行
+    let temp = findRowByPoint({ point, rows })
+    if (temp) {
+      row = temp.row
+      rowIndex = temp.index
+    }
+  }
+
+  // 如果没有找到行，直接返回 null
+  if (row === null) return res
+
+  // 查找所在字符
+  // 如果向后查找
+  if (direction) {
+    // 如果像素点 x 轴在某个字符中间的左边，则为此字符，否则下一行第一个字符
+    row.chars.map((char, index) => {
+      if (res === null && (point[0] <= ((char.position[0] + char.position[2]) / 2))) {
+        res = {
+          char: char.char,
+          index: row.startIndex + index
+        }
+      }
+    })
+    // 没有找到，则为下一行第一个字符
+    if (res === null && rows[rowIndex + 1]) {
+      row = rows[rowIndex + 1]
+      res = {
+        char: row.chars[0].char,
+        index: row.startIndex
+      }
+    }
+    // 向前查找
+  } else {
+    // 如果像素点 x 轴在某个字符中间的右边，则为此字符，否则为上一行最后一个字符
+    for (let i = row.chars.length - 1; i >= 0; i--) {
+      if (res === null && (point[0] > ((row.chars[i].position[0] + row.chars[i].position[2]) / 2))) {
+        res = {
+          char: row.chars[i].char,
+          index: row.startIndex + i
+        }
+        break
+      }
+    }
+    // 没有找到，则为上一行最后一个字符
+    if (res === null && rows[rowIndex - 1]) {
+      row = rows[rowIndex - 1]
+      res = {
+        char: row.chars[row.chars.length - 1].char,
+        index: row.endIndex
+      }
+    }
+  }
+  return res
+}
+
+/**
+ * 找出两个像素点之间的首尾字符
+ * @param {*} param
+ * param {
+ *    points: [{
+ *      point: point,
+ *      page: page
+ *    }], // 两个像素点
+ *    pageSize: [0, 0],
+ *    pagePadding: [0, 0],
+ * }
+ */
+export function findCharsBetweenPoints(param) {
+  const { points } = param
+  let start = null // 开始点
+  let end = null // 结束点
+  let startChar = null // 开始字符
+  let endChar = null // 结束字符
+  let res = null // 结果
+  // 如果不同页码，按页码顺序
+  if (points[0].page.page !== points[1].page.page) {
+    if (points[0].page.page > points[1].page.page) {
+      points.reverse()
+    }
+    // 相同页码需要根据是否同一行判断
+  } else {
+    let rows = [
+      findRowByPoint({
+        point: points[0].point,
+        rows: points[0].page.rows
+      }),
+      findRowByPoint({
+        point: points[1].point,
+        rows: points[1].page.rows
+      })
+    ]
+    // 如果在同一行，根据 x 轴确定先后
+    if (rows[0] && rows[1] && rows[0].index === rows[1].index) {
+      if (points[0].point[0] > points[1].point[0]) {
+        points.reverse()
+      }
+      // 不在同一行，根据 y 轴确定先后
+    } else if (points[0].point[1] > points[1].point[1]) {
+      points.reverse()
+    }
+  }
+  start = points[0]
+  end = points[1]
+  startChar = findCharInPageByPoint({
+    point: start.point,
+    page: start.page,
+    direction: true
+  })
+  endChar = findCharInPageByPoint({
+    point: end.point,
+    page: end.page,
+    direction: false
+  })
+  // 判断结果是否有效
+  if (startChar && endChar) {
+    res = { startChar: startChar.index, endChar: endChar.index }
+  } else {
+    // 不同页面，需要重新设置有效值；同一个页面，结果直接无效
+    if (points[0].page.page !== points[1].page.page) {
+      // 开始页无效，则设置下一页第一个字符
+      if (!startChar) {
+        startChar = start.page.endIndex + 1
+        // 结束页无效，则设置上一页最后一个字符
+      } else {
+        endChar = end.page.startIndex - 1
+      }
+      res = { startChar, endChar }
+    }
+  }
+  return res
+}
+
+/**
+ * 找出像素点所在行
+ * @param {*} param
+ * param {
+ *    point: [0, 0],
+ *    rows: [{
+ *      rowSpace: [100, 100, 300, 124]
+ *    }]
+ * }
+ */
+export function findRowByPoint(param) {
+  const { point, rows } = param
+  let res = null
+  rows.map((item, index) => {
+    if (point[1] >= item.rowSpace[1] && point[1] < item.rowSpace[3]) {
+      res = {
+        row: JSON.parse(JSON.stringify(item)),
+        index
+      }
+    }
+  })
+  return res
+}
+
+/**
+ * 计算高亮背景区域
+ * @param {*} param
+ * param {
+ *    pages: [page],
+ *    startChar: 0, // 开始字符索引
+ *    endChar: 1, // 结束字符索引
+ * }
+ */
+export function calcHighlightArea(param) {
+  const { pages, startChar, endChar } = param
+  let startPageIndex = null
+  let endPageIndex = null
+  let startRowIndex = null
+  let endRowIndex = null
+  let res = null
+  // 找到开始页/行和结束页/行
+  pages.map((page, index) => {
+    if (page.startIndex <= startChar && page.endIndex >= startChar) {
+      startPageIndex = index
+      page.rows.map((row, rowIndex) => {
+        if (row.startIndex <= startChar && row.endIndex >= startChar) {
+          startRowIndex = rowIndex
+        }
+      })
+    }
+    if (page.startIndex <= endChar && page.endIndex >= endChar) {
+      endPageIndex = index
+      page.rows.map((row, rowIndex) => {
+        if (row.startIndex <= endChar && row.endIndex >= endChar) {
+          endRowIndex = rowIndex
+        }
+      })
+    }
+  })
+
+  res = []
+  for (let i = startPageIndex; i <= endPageIndex; i++) {
+    res.push({
+      page: i,
+      rows: calcHighlightInPage({
+        startChar: i === startPageIndex ? startChar : pages[i].startIndex,
+        endChar: i === endPageIndex ? endChar : pages[i].endIndex,
+        startRowIndex: i === startPageIndex ? startRowIndex : 0,
+        endRowIndex: i === endPageIndex ? endRowIndex : pages[i].rows.length - 1,
+        page: pages[i]
+      })
+    })
+  }
+  return res
+}
+
+/**
+ * 计算某一页中高亮区域
+ * @param {*} param
+ * param {
+ *    startChar: 0, // 开始索引
+ *    endChar: 1, // 结束索引
+ *    startRowIndex: 0, // 本页开始行
+ *    endRowIndex: 1, // 本页结束行
+ *    page: page
+ * }
+ */
+export function calcHighlightInPage(param) {
+  const { startChar, endChar, startRowIndex, endRowIndex, page } = param
+  let row = null
+  let startPosition = null
+  let endPosition = null
+  const res = []
+
+  for (let i = startRowIndex; i <= endRowIndex; i++) {
+    row = page.rows[i]
+    // 开始字符和结束字符在同一行
+    if (i === startRowIndex && i === endRowIndex) {
+      startPosition = row.chars[startChar - row.startIndex].position
+      endPosition = row.chars[endChar - row.startIndex].position
+      // 开始行
+    } else if (i === startRowIndex) {
+      startPosition = row.chars[startChar - row.startIndex].position
+      endPosition = row.chars[row.chars.length - 1].position
+      // 结束行
+    } else if (i === endRowIndex) {
+      startPosition = row.chars[0].position
+      endPosition = row.chars[endChar - row.startIndex].position
+      // 普通行
+    } else {
+      startPosition = row.chars[0].position
+      endPosition = row.chars[row.chars.length - 1].position
+    }
+    res.push([
+      startPosition[0],
+      startPosition[1],
+      endPosition[2],
+      endPosition[3]
+    ])
+  }
+  return res
+}
+
+/**
+ * 计算元素位置
+ * @param {*} param
+ * param {
+ *    window: [100, 100], // 窗口尺寸
+ *    el: [10, 10], // 元素尺寸
+ *    target: [10, 10], // 目标位置
+ *    position: 'left'/'right'/'top'/'bottom' // 元素位置
+ * }
+ * @return {Array}
+ * 返回值：[0, 0]
+ */
+export function calcPosition(param) {
+  const { window, el, target, position } = param
+  // 首先，根据 target 和 el 中心定位左上角
+  const res = [target[0] - el[0] / 2, target[1] - el[1] / 2]
+  // 然后根据方位调整
+  switch (position) {
+    case 'left':
+      res[0] = target[0] - el[0]
+      break
+    case 'right':
+      res[0] = target[0]
+      break
+    case 'top':
+      res[1] = target[1] - el[1]
+      break
+    case 'bottom':
+      res[1] = target[1]
+      break
+  }
+  // 如果超出屏幕范围，需要调整--暂不考虑 el 比 window 大的情况
+  // 左侧
+  res[0] = res[0] < 0 ? 0 : res[0]
+  // 右侧
+  res[0] = res[0] + el[0] > window[0] ? window[0] - el[0] : res[0]
+  // 上面
+  res[1] = res[1] < 0 ? 0 : res[1]
+  // 下面
+  res[1] = res[1] + el[1] > window[1] ? window[1] - el[1] : res[1]
+  return res
+}

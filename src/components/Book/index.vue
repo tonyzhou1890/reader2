@@ -29,6 +29,7 @@
       @touchend="touch"
       @mousedown="handleMousedown"
       @mouseup="handleMouseup"
+      @mousemove="handleMousemove"
     >
       <!-- 封面 -->
       <img
@@ -52,6 +53,15 @@
         }"
       >
         <div class="por">
+          <!-- 背景层 -->
+          <canvas
+            ref="pageOneBgc"
+            class="poa"
+            :style="{
+              width: pageSize[0] + 'px',
+              height: pageSize[1] + 'px'
+            }"
+          />
           <!-- 内容层 -->
           <canvas
             ref="pageOneText"
@@ -73,6 +83,15 @@
         }"
       >
         <div class="por">
+          <!-- 背景层 -->
+          <canvas
+            ref="pageTwoBgc"
+            class="poa"
+            :style="{
+              width: pageSize[0] + 'px',
+              height: pageSize[1] + 'px'
+            }"
+          />
           <!-- 内容层 -->
           <canvas
             ref="pageTwoText"
@@ -100,9 +119,15 @@ import {
   layout,
   renderPage,
   calcBookSize,
-  supportFamily
+  supportFamily,
+  renderBgc
 } from '@/utils/utils'
-import { arrayCopy } from '@/utils/pureUtils'
+import {
+  arrayCopy,
+  findCharsBetweenPoints,
+  calcHighlightArea,
+  calcPosition
+} from '@/utils/pureUtils'
 import { bookSetting, appSetting } from '@/utils/setting'
 let {
   defaultPageSize,
@@ -113,6 +138,20 @@ let {
   pagePadding,
   menuWidth
 } = bookSetting
+let initSelection = { // 默认文字选择
+  startEvent: {
+    page: null,
+    e: null
+  },
+  endEvent: {
+    page: null,
+    e: null
+  },
+  isMoving: false,
+  startChar: null,
+  endChar: null,
+  highlight: []
+}
 // let _calcBookSize = debounce(calcBookSize, 100)
 export default {
   name: 'Book',
@@ -141,6 +180,10 @@ export default {
       required: true
     },
     background: {
+      type: String,
+      required: true
+    },
+    highlightBgc: {
       type: String,
       required: true
     },
@@ -202,10 +245,12 @@ export default {
       mouseEventData: { // mousedown 和 mouseup 事件数据
         down: null,
         up: null,
+        move: null,
         duration: null
       },
       DPR: appSetting.DPR, // 设备像素比，canvas 的计算需要考虑这个
-      worker: new Worker()
+      worker: new Worker(),
+      selection: JSON.parse(JSON.stringify(initSelection)) // 文字选择
     }
   },
   computed: {
@@ -250,6 +295,15 @@ export default {
           this.bookSize[1]
         ]
       }
+    },
+    // 文字选择
+    _selection() {
+      return {
+        startChar: this.selection.startChar,
+        endChar: this.selection.endChar,
+        single: this.single,
+        full: this.full
+      }
     }
   },
   created() {},
@@ -261,6 +315,8 @@ export default {
       window.ctxTwoText = this.ctxTwoText = this.$refs.pageTwoText.getContext(
         '2d'
       )
+      window.ctxOneBgc = this.ctxOneBgc = this.$refs.pageOneBgc.getContext('2d')
+      window.ctxTwoBgc = this.ctxTwoBgc = this.$refs.pageTwoBgc.getContext('2d')
       this.textToPage()
     }
   },
@@ -287,6 +343,8 @@ export default {
     // 监听需要重新绘制的属性
     propertiesToRender: {
       handler() {
+        // 重绘文字前，清除文字选择
+        this.clearSelection()
         this.renderPage()
         // 如果是双页，渲染第二页
         if (!this.single) {
@@ -304,10 +362,22 @@ export default {
     // 监听 page
     page: {
       handler() {
+        // 重绘文字前，清除文字选择
+        this.clearSelection()
         this.renderPage()
         // 如果是双页，渲染第二页
         if (!this.single) {
           this.renderPage('two')
+        }
+      }
+    },
+    // 监听 _selection
+    _selection: {
+      handler() {
+        this.renderBgc()
+        // 如果是双页，渲染第二页
+        if (!this.single) {
+          this.renderBgc('two')
         }
       }
     }
@@ -636,15 +706,26 @@ export default {
     },
     // mousedown
     handleMousedown(e) {
+      // 只记录左键
+      if (e.button !== 0) return
       this.mouseEventData.down = e
     },
     // mouseup
     handleMouseup(e) {
+      let isClearSelection = false // 本次操作是否为清除文字选择
+      // 如果鼠标弹起的时候文字选择有值，并且 isMoving 为假，需要清除文字选择
+      if (this.selection.highlight.length && !this.selection.isMoving) {
+        this.clearSelection()
+        isClearSelection = true
+      }
+      // 只记录左键
+      if (e.button !== 0) return
+
       this.mouseEventData.up = e
       const rect = this.$refs.bookContainer.getBoundingClientRect()
       const left = e.clientX - rect.left
       const top = e.clientY - rect.top
-      // 点击九宫格中间
+      // 全屏状态下，点击九宫格中间小于300ms，并且非文字选择状态，则显示菜单
       if (
         e.timeStamp - this.mouseEventData.down.timeStamp < 300 &&
         e.clientX === this.mouseEventData.down.clientX &&
@@ -653,9 +734,104 @@ export default {
         top < rect.height / 3 * 2 &&
         left > rect.width / 3 &&
         left < rect.width / 3 * 2 &&
-        this.full
+        this.full &&
+        !isClearSelection
       ) {
         this.$emit('showMenu')
+      }
+      // 是否需要显示操作按钮
+      if (this.selection.highlight.length && this.selection.isMoving) {
+        let tempPage = this.selection.highlight[this.selection.highlight.length - 1]
+        let tempRow = tempPage.rows[tempPage.rows.length - 1]
+        if (tempRow) {
+          tempRow = [tempRow[2], tempRow[3]]
+          // 如果右边页面，需要加上左边页面宽度
+          if (!this.single && tempPage.page !== this.page) {
+            tempRow[0] += this.pageSize[0]
+          }
+          // 如果非全屏，需要加上空白区域
+          if (!this.full) {
+            let rect = this.$refs.bookContainer.getBoundingClientRect()
+            tempRow[0] += rect.left
+            tempRow[1] += rect.top
+          }
+          const position = calcPosition({
+            window: [this.width, this.height],
+            el: [40, 28],
+            target: [tempRow[0], tempRow[1]],
+            position: 'bottom'
+          })
+          this.$emit('showActionBar', { show: true, position })
+        }
+      }
+      // 清除事件记录
+      this.mouseEventData.down = null
+      this.mouseEventData.up = null
+      this.selection.isMoving = false
+    },
+    // mousemove
+    handleMousemove(e) {
+      if (this.mouseEventData.down &&
+        this.mouseEventData.up === null &&
+        (e.clientX !== this.mouseEventData.down.clientX || e.clientY !== this.mouseEventData.down.clientY)
+      ) {
+        this.mouseEventData.move = this.selection.endEvent = e
+        if (!this.selection.isMoving) {
+          this.selection.startEvent = this.mouseEventData.down
+          this.selection.isMoving = true
+        }
+        // 计算points
+        const rect = this.$refs.bookContainer.getBoundingClientRect()
+        const startPoint = [this.selection.startEvent.clientX - rect.left, this.selection.startEvent.clientY - rect.top]
+        const endPoint = [this.selection.endEvent.clientX - rect.left, this.selection.endEvent.clientY - rect.top]
+        const points = [
+          {
+            point: startPoint,
+            page: this._bookData.pages[this.page]
+          },
+          {
+            point: endPoint,
+            page: this._bookData.pages[this.page]
+          }
+        ]
+        // 如果是双页，需要判断所在页
+        if (!this.single) {
+          if (startPoint[0] > this.pageSize[0]) {
+            // 还要判断所在页是否存在
+            if (this._bookData.pages[this.page + 1]) {
+              startPoint[0] -= this.pageSize[0]
+              points[0].page = this._bookData.pages[this.page + 1]
+              // 如果不存在，默认上一页右下角
+            } else {
+              points[0].point = [this.pageSize[0], this.pageSize[1]]
+            }
+          }
+          if (endPoint[0] > this.pageSize[0]) {
+            if (this._bookData.pages[this.page + 1]) {
+              endPoint[0] -= this.pageSize[0]
+              points[1].page = this._bookData.pages[this.page + 1]
+            } else {
+              points[1].point = [this.pageSize[0], this.pageSize[1]]
+            }
+          }
+        }
+        // 计算选中字符
+        const tempChars = findCharsBetweenPoints({
+          points
+        })
+        if (tempChars) {
+          const tempHighlight = calcHighlightArea({
+            pages: this._bookData.pages,
+            startChar: tempChars.startChar,
+            endChar: tempChars.endChar
+          })
+          this.selection = {
+            ...this.selection,
+            startChar: tempChars.startChar,
+            endChar: tempChars.endChar,
+            highlight: tempHighlight
+          }
+        }
       }
     },
     // 页码改变
@@ -747,6 +923,61 @@ export default {
         }
       }
       this.$emit('changePercent', percent)
+    },
+    // 绘制背景--目前只包括选择文字
+    renderBgc(two) {
+      let page = this.page
+      let bgcCtx = this.ctxOneBgc
+      if (two) {
+        page += 1
+        bgcCtx = this.ctxTwoBgc
+      }
+      // 首先清屏
+      // 采用这种方式清屏，是为了一并解决纸张大小变化的情况
+      bgcCtx.canvas.width = this.pageSize[0] * this.DPR
+      bgcCtx.canvas.height = this.pageSize[1] * this.DPR
+      // 画布缩放
+      bgcCtx.scale(this.DPR, this.DPR)
+      // 是否需要绘制
+      if (this.selection.startChar !== null && this.selection.endChar !== null) {
+        const tempPageInfo = this.selection.highlight.find(item => item.page === page)
+        if (tempPageInfo) {
+          renderBgc({
+            rows: tempPageInfo.rows,
+            ctx: bgcCtx,
+            fillStyle: this.highlightBgc
+          })
+        }
+      }
+    },
+    // 清除文字选择和操作按钮
+    clearSelection() {
+      this.selection = JSON.parse(JSON.stringify(initSelection))
+      this.$emit('showActionBar', { show: false, position: [0, 0] })
+    },
+    // 按钮触发的操作
+    trigger(key) {
+      switch (key) {
+        case 'copy':
+          this.handleCopy()
+          break
+      }
+    },
+    // 复制
+    handleCopy() {
+      let text = arrayCopy(this._bookData.textArray, this.selection.startChar, this.selection.endChar).join('')
+      const el = document.getElementById('action-copy-el')
+      el.dataset.clipboardAction = 'copy'
+      el.dataset.clipboardText = text
+      const clipboard = new this.Clipboard('#action-copy-el')
+      clipboard.on('success', () => {
+        this.$message.success('复制成功')
+      })
+      clipboard.on('error', (e) => {
+        this.$message.success('复制失败')
+        console.log(e)
+      })
+      this.clearSelection()
     }
   }
 }

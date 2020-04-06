@@ -22,6 +22,7 @@ export const bookSetting = {
   lineHeight: 1.5, // 默认行高
   color: '#333', // 默认字体颜色
   background: '#fff5ee', // 默认背景色
+  highlightBgc: '#ffa500', // 高亮背景色
   fontFamilies: [ // 可选字体
     {
       value: 'Microsoft YaHei',

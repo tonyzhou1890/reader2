@@ -215,7 +215,7 @@ export function layout(param) {
       _params.paddingLeft,
       _params.paddingTop + row * _params.lineHeight,
       _params.paddingLeft + _params.lineWidth,
-      _params.paddingTop + row * (_params.lineHeight + 1)
+      _params.paddingTop + (row + 1) * _params.lineHeight
     ]
     // 如果是完整的一行，需要计算字间距，
     if (item.completed) {
@@ -416,4 +416,24 @@ export function search(param) {
   } else {
     return false
   }
+}
+
+/**
+ * 绘制背景
+ * @param {Object} param  参数对象
+ * param: {
+ *    rows: [10, 10, 100, 20], // 绘制区域
+ *    ctx: {},  // canvas 绘图上下文
+ *    fillStyle: 'orange', // 背景色
+ * }
+ * 返回值：true/false
+ */
+export function renderBgc(param) {
+  const { rows, ctx, fillStyle } = param
+  ctx.fillStyle = fillStyle
+  // 绘制背景
+  rows.map((item, row) => {
+    // 绘制的背景高度加 2 像素的补正--因为背景无法完全覆盖文字，不知为何
+    ctx.fillRect(item[0], item[1], item[2] - item[0], item[3] - item[1] + 2)
+  })
 }

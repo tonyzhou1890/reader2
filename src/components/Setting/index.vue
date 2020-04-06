@@ -39,6 +39,11 @@
           v-model="bindSetting.background"
           size="small"></el-color-picker>
       </el-form-item>
+      <el-form-item label="高亮颜色">
+        <el-color-picker
+          v-model="bindSetting.highlightBgc"
+          size="small"></el-color-picker>
+      </el-form-item>
       <el-row class="buttons">
         <el-button
           size='mini'

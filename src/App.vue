@@ -1,6 +1,13 @@
 <template>
   <div id="app" class="por" v-loading="loading">
+    <!-- 操作按钮 -->
+    <ActionBar
+      :show="showActionBar"
+      :position="actionBarPosition"
+      @action="handleAction"
+    />
     <Book
+      ref="book"
       :style="`z-index: 1`"
       :text="text"
       :title="title"
@@ -8,6 +15,7 @@
       :height="height"
       :color="setting.color"
       :background="setting.background"
+      :highlightBgc="setting.highlightBgc"
       :fontFamily="setting.fontFamily"
       :fontSize="setting.fontSize"
       :lineHeight="setting.lineHeight"
@@ -18,6 +26,7 @@
       @changePage="handleChangePage"
       @changePercent="handleChangePercent"
       @showMenu="() => toggleMenu(true)"
+      @showActionBar="toggleActionBar"
     >
       <!-- 菜单 -->
       <Menu
@@ -95,11 +104,12 @@ import ChapterList from '@/components/ChapterList'
 import Local from './components/Local'
 import Book from './components/Book'
 import Menu from './components/Menu'
+import ActionBar from './components/ActionBar'
 import localforage from 'localforage'
 import { bookSetting, appSetting } from '@/utils/setting'
 import { getBookInfo, setBookInfo } from '@/utils/storage'
 import { appErrorInfo } from '@/utils/error'
-let { fontFamily, fontSize, lineHeight, color, background, renderChapter } = bookSetting
+let { fontFamily, fontSize, lineHeight, color, background, highlightBgc, renderChapter } = bookSetting
 let { title } = appSetting
 const defaultSetting = {
   fontFamily,
@@ -107,6 +117,7 @@ const defaultSetting = {
   lineHeight,
   color,
   background,
+  highlightBgc,
   renderChapter
 }
 export default {
@@ -118,7 +129,8 @@ export default {
     ChapterList,
     Local,
     Book,
-    Menu
+    Menu,
+    ActionBar
   },
   data() {
     return {
@@ -135,16 +147,14 @@ export default {
       defaultSetting,
       setting: Object.assign({}, defaultSetting),
       type: 'local', // 打开方式：address、local、message
-      mouseEvent: {
-        down: null,
-        lastSelectionType: ''
-      },
       address: null,
       loading: false,
       local: null,
       showLocal: false,
       saveBookInfoTimeOut: null, // 缓存书籍信息延时引用
-      message: null // postMessage 发送过来的信息
+      message: null, // postMessage 发送过来的信息
+      showActionBar: false, // 是否显示操作按钮
+      actionBarPosition: [0, 0] // 操作按钮位置
     }
   },
   computed: {
@@ -414,6 +424,15 @@ export default {
         .catch(e => {
           this.$message.error('同步进度失败。错误码：r202')
         })
+    },
+    // 处理按钮操作
+    handleAction(key) {
+      this.$refs.book.trigger(key)
+    },
+    // 切换操作按钮显隐
+    toggleActionBar(e) {
+      this.showActionBar = e.show
+      this.actionBarPosition = e.position || this.actionBarPosition
     }
   }
 }
