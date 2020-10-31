@@ -58,8 +58,8 @@
             ref="pageOneBgc"
             class="poa"
             :style="{
-              width: pageSize[0] + 'px',
-              height: pageSize[1] + 'px'
+              width: _pageSize.canvas[0] + 'px',
+              height: _pageSize.canvas[1] + 'px'
             }"
           />
           <!-- 内容层 -->
@@ -67,10 +67,19 @@
             ref="pageOneText"
             class="poa"
             :style="{
-              width: pageSize[0] + 'px',
-              height: pageSize[1] + 'px'
+              width: _pageSize.canvas[0] + 'px',
+              height: _pageSize.canvas[1] + 'px'
             }"
           />
+          <!-- svg 渲染 -->
+          <svg
+            ref="svgPageOneText"
+            class="poa"
+            :style="{
+              width: _pageSize.svg[0] + 'px',
+              height: _pageSize.svg[1] + 'px'
+            }"
+          ></svg>
         </div>
       </div>
       <!-- page-2 -->
@@ -88,8 +97,8 @@
             ref="pageTwoBgc"
             class="poa"
             :style="{
-              width: pageSize[0] + 'px',
-              height: pageSize[1] + 'px'
+              width: _pageSize.canvas[0] + 'px',
+              height: _pageSize.canvas[1] + 'px'
             }"
           />
           <!-- 内容层 -->
@@ -97,10 +106,19 @@
             ref="pageTwoText"
             class="poa"
             :style="{
-              width: pageSize[0] + 'px',
-              height: pageSize[1] + 'px'
+              width: _pageSize.canvas[0] + 'px',
+              height: _pageSize.canvas[1] + 'px'
             }"
           />
+          <!-- svg 渲染 -->
+          <svg
+            ref="svgPageTwoText"
+            class="poa"
+            :style="{
+              width: _pageSize.svg[0] + 'px',
+              height: _pageSize.svg[1] + 'px'
+            }"
+          ></svg>
         </div>
       </div>
     </div>
@@ -118,6 +136,7 @@ import {
   measureChars,
   layout,
   renderPage,
+  renderSvgPage,
   calcBookSize,
   supportFamily,
   renderBgc
@@ -220,6 +239,10 @@ export default {
     renderChapter: { // 是否分章排版
       type: Boolean,
       default: true
+    },
+    render: { // 渲染方式 svg / canvas
+      type: String,
+      default: 'svg'
     }
   },
   data() {
@@ -271,8 +294,8 @@ export default {
     },
     // 页面需要重新绘制的相关属性
     propertiesToRender() {
-      let { color, title } = this
-      return { color, title }
+      let { color, title, render } = this
+      return { color, title, render }
     },
     // 显示内容
     showWhat() {
@@ -303,6 +326,12 @@ export default {
         endChar: this.selection.endChar,
         single: this.single,
         full: this.full
+      }
+    },
+    _pageSize() {
+      return {
+        canvas: this.render === 'canvas' ? [...this.pageSize] : [0, 0],
+        svg: this.render === 'svg' ? [...this.pageSize] : [0, 0]
       }
     }
   },
@@ -380,6 +409,13 @@ export default {
           this.renderBgc('two')
         }
       }
+    },
+    // 监听高亮背景色
+    highlightBgc: {
+      handler() {
+        this.setSelectionStyle()
+      },
+      immediate: true
     }
   },
   methods: {
@@ -542,7 +578,7 @@ export default {
         ctx.font = `${this.fontSize}px '${bookSetting.fontFamily}'`
       }
     },
-    // 绘制页面，不仅仅处理内容 canvas 的绘制，还处理封面和封底
+    // 绘制页面，不仅仅处理内容 canvas / svg 的绘制，还处理封面和封底
     renderPage(two) {
       let page = this.page
       let textCtx = this.ctxOneText
@@ -569,16 +605,19 @@ export default {
         }
         this._bookData.pages[page].rows = layout(param)
       }
-      // 首先清屏
-      // 采用这种方式清屏，是为了一并解决纸张大小变化的情况
-      textCtx.canvas.width = this.pageSize[0] * this.DPR
-      textCtx.canvas.height = this.pageSize[1] * this.DPR
-      // 画布缩放
-      textCtx.scale(this.DPR, this.DPR)
-      // 重设画布大小后，绘图上下文会重置
-      this.setTextCtx(textCtx)
+      // canvas 渲染
+      if (this.render === 'canvas') {
+        // 首先清屏
+        // 采用这种方式清屏，是为了一并解决纸张大小变化的情况
+        textCtx.canvas.width = this.pageSize[0] * this.DPR
+        textCtx.canvas.height = this.pageSize[1] * this.DPR
+        // 画布缩放
+        textCtx.scale(this.DPR, this.DPR)
+        // 重设画布大小后，绘图上下文会重置
+        this.setTextCtx(textCtx)
+      }
       if (tempPageInfo) {
-        const renderParam = {
+        let renderParam = {
           rows: tempPageInfo.rows,
           width: this.pageSize[0],
           height: this.pageSize[1],
@@ -591,8 +630,18 @@ export default {
           headerTextAlign: two ? 'right' : 'left',
           footerText: `${page + 1}/${this._bookData.pages.length}`
         }
-        // 绘制页面
-        renderPage(renderParam)
+        // canvas
+        if (this.render === 'canvas') {
+          renderParam.ctx = textCtx
+          // 绘制页面
+          renderPage(renderParam)
+        } else { // svg
+          renderParam.el = two ? this.$refs.svgPageTwoText : this.$refs.svgPageOneText
+          renderParam.fontFamily = this.fontFamily
+          renderParam.color = this.color
+          // 绘制页面
+          renderSvgPage(renderParam)
+        }
       }
     },
     // 根据 percent 和 this._bookData.pages 计算 page
@@ -779,6 +828,10 @@ export default {
         if (!this.selection.isMoving) {
           this.selection.startEvent = this.mouseEventData.down
           this.selection.isMoving = true
+        }
+        // svg 不需要计算选中区域
+        if (this.render === 'svg') {
+          return
         }
         // 计算points
         const rect = this.$refs.bookContainer.getBoundingClientRect()
@@ -978,6 +1031,20 @@ export default {
         console.log(e)
       })
       this.clearSelection()
+    },
+    // 设置选择文字的背景色
+    setSelectionStyle() {
+      let el = document.querySelector('#svg-text-selection')
+      if (!el) {
+        el = document.createElement('style')
+        el.setAttribute('id', 'svg-text-selection')
+        document.head.appendChild(el)
+      }
+      el.innerHTML = `
+        .content-wrapper svg text::selection {
+          background-color: ${this.highlightBgc};
+        }
+      `
     }
   }
 }

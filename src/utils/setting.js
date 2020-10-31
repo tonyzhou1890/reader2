@@ -23,6 +23,17 @@ export const bookSetting = {
   color: '#333', // 默认字体颜色
   background: '#fff5ee', // 默认背景色
   highlightBgc: '#ffa500', // 高亮背景色
+  render: 'canvas', // 渲染方式，canvas / svg，默认 canvas
+  renderTypes: [ // 可选渲染方式
+    {
+      value: 'canvas',
+      label: 'canvas'
+    },
+    {
+      value: 'svg',
+      label: 'svg'
+    }
+  ],
   fontFamilies: [ // 可选字体
     {
       value: 'Microsoft YaHei',
@@ -59,5 +70,6 @@ export const bookSetting = {
  */
 export const appSetting = {
   title: '享阅·阅读器',
-  DPR: window.devicePixelRatio || 1 // 设备像素比，canvas 的计算需要考虑这个
+  DPR: window.devicePixelRatio || 1, // 设备像素比，canvas 的计算需要考虑这个
+  threads: 4 // 线程数量
 }

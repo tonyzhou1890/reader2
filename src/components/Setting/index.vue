@@ -44,6 +44,18 @@
           v-model="bindSetting.highlightBgc"
           size="small"></el-color-picker>
       </el-form-item>
+      <el-form-item label="渲染方式">
+        <el-select
+          v-model="bindSetting.render"
+          placeholder="选择渲染方式"
+          size="mini"
+        >
+          <el-option
+            v-for="(item, index) in renderTypes"
+            :key="index"
+            :label="item.label" :value="item.value"></el-option>
+        </el-select>
+      </el-form-item>
       <el-row class="buttons">
         <el-button
           size='mini'
@@ -64,7 +76,7 @@
 
 <script>
 import { bookSetting } from '@/utils/setting'
-const { fontFamilies, fontSizes, lineHeights } = bookSetting
+const { fontFamilies, fontSizes, lineHeights, renderTypes } = bookSetting
 export default {
   name: 'Setting',
   props: {
@@ -88,6 +100,7 @@ export default {
       fontFamilies,
       fontSizes,
       lineHeights,
+      renderTypes,
       bindSetting: Object.assign({}, this.setting) // 待改变的设置
     }
   },
