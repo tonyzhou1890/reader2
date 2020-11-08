@@ -199,6 +199,7 @@ export function renderSvgPage(param) {
       text.style.fontSize = `${param.fontSize}px`
       text.style.fontFamily = `${param.fontFamily}`
       text.style.fill = `${param.color}`
+      text.style.whiteSpace = 'pre'
       text.setAttribute('x', item.charsSpace[0])
       text.setAttribute('y', item.charsSpace[3])
       fragment.appendChild(text)
@@ -293,6 +294,7 @@ export function renderDomPage(param) {
       text.style.left = `${item.charsSpace[0]}px`
       text.style.top = `${item.charsSpace[1]}px`
       text.style.letterSpacing = `${item.letterSpacing}px`
+      text.style.whiteSpace = 'pre'
       fragment.appendChild(text)
     }
   })
