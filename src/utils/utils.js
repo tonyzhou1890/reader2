@@ -203,16 +203,6 @@ export function renderSvgPage(param) {
       text.setAttribute('y', item.charsSpace[3])
       fragment.appendChild(text)
     }
-    // item.chars.map(chara => {
-    //   text = document.createElementNS('http://www.w3.org/2000/svg', 'text')
-    //   text.textContent = chara.char
-    //   text.style.fontSize = `${param.fontSize}px`
-    //   text.style.fontFamily = `${param.fontFamily}`
-    //   text.style.fill = `${param.color}`
-    //   text.setAttribute('x', chara.position[0])
-    //   text.setAttribute('y', chara.position[3])
-    //   fragment.appendChild(text)
-    // })
   })
   // 绘制页脚
   let _fontSize = param.full ? 12 : param.fontSize * 3 / 4
@@ -255,6 +245,102 @@ export function renderSvgPage(param) {
   param.el.appendChild(fragment)
 
   console.log('renderSvgPage:', Date.now() - s)
+}
+
+/**
+ * 绘制 dom 页面
+ * @param {Object} param  参数对象
+ * param: {
+ *    rows: [{
+ *      chars: [
+ *        {
+ *          char: 'a',
+ *          position: [100, 100, 116, 116], // 字符绘制位置
+ *        }
+ *      ]
+ *    }], // 文本
+ *    width: 100, // 纸张宽度
+ *    height: 100,  // 纸张高度
+ *    paddingLeft: 20,
+ *    paddingTop: 20,
+ *    full: true, // 是否全屏状态
+ *    el: {},  // svg 容器
+ *    fontSize: 16, // 字体大小，页眉和页脚文字大小为字体大小的 3/4，全屏模式下为 12
+ *    fontFamily: 'Microsoft YaHei', // 字体
+ *    color: 'red', // 字体颜色
+ *    footerText: '12/12', // 页脚文字
+ * }
+ * 返回值：true/false
+ */
+export function renderDomPage(param) {
+  const s = Date.now()
+  const fragment = document.createDocumentFragment()
+  let text = null
+  let textContent = ''
+  // 绘制内容
+  param.rows.map((item, row) => {
+    textContent = ''
+    text = document.createElement('span')
+    item.chars.map(chara => {
+      textContent += chara.char
+    })
+    if (textContent) {
+      text.innerText = textContent
+      text.style.fontSize = `${param.fontSize}px`
+      text.style.fontFamily = `${param.fontFamily}`
+      text.style.color = `${param.color}`
+      text.style.position = 'absolute'
+      text.style.left = `${item.charsSpace[0]}px`
+      text.style.top = `${item.charsSpace[1]}px`
+      text.style.letterSpacing = `${item.letterSpacing}px`
+      fragment.appendChild(text)
+    }
+  })
+  // 绘制页脚
+  let _fontSize = param.full ? 12 : param.fontSize * 3 / 4
+  if (_fontSize > param.paddingTop) {
+    _fontSize = param.paddingTop * 3 / 4
+  }
+  let position = [
+    param.width / 2,
+    param.height - (param.paddingTop - _fontSize) / 2 - _fontSize
+  ]
+  text = document.createElement('span')
+  text.textContent = param.footerText
+  text.style.fontSize = `${_fontSize}px`
+  text.style.fontFamily = `${bookSetting.fontFamily}`
+  text.style.color = `gray`
+  text.style.position = 'absolute'
+  text.style.left = `${position[0]}px`
+  text.style.top = `${position[1]}px`
+  text.style.transform = 'translateX(-50%)'
+  fragment.appendChild(text)
+  // 绘制页眉
+  if (param.headerText) {
+    position = [
+      param.headerTextAlign === 'right' ? param.width - param.paddingLeft : param.paddingLeft,
+      (param.paddingTop - _fontSize) / 2
+    ]
+    text = document.createElement('span')
+    text.textContent = param.headerText
+    text.style.fontSize = `${_fontSize}px`
+    text.style.fontFamily = `${bookSetting.fontFamily}`
+    text.style.color = `gray`
+    text.style.position = 'absolute'
+    text.style.left = `${position[0]}px`
+    text.style.top = `${position[1]}px`
+    if (param.headerTextAlign === 'right') {
+      text.style.transform = 'translateX(-100%)'
+    }
+    fragment.appendChild(text)
+  }
+
+  while (param.el.lastChild) {
+    param.el.removeChild(param.el.lastChild)
+  }
+  param.el.appendChild(fragment)
+
+  console.log('renderDomPage:', Date.now() - s)
 }
 
 /**
@@ -348,6 +434,8 @@ export function layout(param) {
       item.chars[item.chars.length - 1].position[2],
       item.chars[item.chars.length - 1].position[3]
     ]
+    // letterSpacing 也加到对象中
+    item.letterSpacing = letterSpacing
     // 标记此行已经计算过
     item.calculated = true
   })

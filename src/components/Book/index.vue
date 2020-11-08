@@ -80,6 +80,15 @@
               height: _pageSize.svg[1] + 'px'
             }"
           ></svg>
+          <!-- dom 渲染 -->
+          <div
+            ref="domPageOneText"
+            class="poa dom-page-content"
+            :style="{
+              width: _pageSize.dom[0] + 'px',
+              height: _pageSize.dom[1] + 'px'
+            }"
+          ></div>
         </div>
       </div>
       <!-- page-2 -->
@@ -119,6 +128,15 @@
               height: _pageSize.svg[1] + 'px'
             }"
           ></svg>
+          <!-- dom 渲染 -->
+          <div
+            ref="domPageTwoText"
+            class="poa dom-page-content"
+            :style="{
+              width: _pageSize.dom[0] + 'px',
+              height: _pageSize.dom[1] + 'px'
+            }"
+          ></div>
         </div>
       </div>
     </div>
@@ -137,6 +155,7 @@ import {
   layout,
   renderPage,
   renderSvgPage,
+  renderDomPage,
   calcBookSize,
   supportFamily,
   renderBgc
@@ -331,7 +350,8 @@ export default {
     _pageSize() {
       return {
         canvas: this.render === 'canvas' ? [...this.pageSize] : [0, 0],
-        svg: this.render === 'svg' ? [...this.pageSize] : [0, 0]
+        svg: this.render === 'svg' ? [...this.pageSize] : [0, 0],
+        dom: this.render === 'dom' ? [...this.pageSize] : [0, 0]
       }
     }
   },
@@ -635,12 +655,18 @@ export default {
           renderParam.ctx = textCtx
           // 绘制页面
           renderPage(renderParam)
-        } else { // svg
+        } else if (this.render === 'svg') { // svg
           renderParam.el = two ? this.$refs.svgPageTwoText : this.$refs.svgPageOneText
           renderParam.fontFamily = this.fontFamily
           renderParam.color = this.color
           // 绘制页面
           renderSvgPage(renderParam)
+        } else { // dom
+          renderParam.el = two ? this.$refs.domPageTwoText : this.$refs.domPageOneText
+          renderParam.fontFamily = this.fontFamily
+          renderParam.color = this.color
+          // 绘制页面
+          renderDomPage(renderParam)
         }
       }
     },
@@ -829,8 +855,8 @@ export default {
           this.selection.startEvent = this.mouseEventData.down
           this.selection.isMoving = true
         }
-        // svg 不需要计算选中区域
-        if (this.render === 'svg') {
+        // 非 canvas 不需要计算选中区域
+        if (this.render !== 'canvas') {
           return
         }
         // 计算points
@@ -1034,14 +1060,16 @@ export default {
     },
     // 设置选择文字的背景色
     setSelectionStyle() {
-      let el = document.querySelector('#svg-text-selection')
+      let el = document.querySelector('#page-text-selection')
       if (!el) {
         el = document.createElement('style')
-        el.setAttribute('id', 'svg-text-selection')
+        el.setAttribute('id', 'page-text-selection')
         document.head.appendChild(el)
       }
       el.innerHTML = `
-        .content-wrapper svg text::selection {
+        .content-wrapper svg text::selection,
+        .content-wrapper .dom-page-content *::selection
+        {
           background-color: ${this.highlightBgc};
         }
       `
@@ -1069,6 +1097,9 @@ export default {
       margin: 0 auto;
       width: 100%;
       height: 100%;
+    }
+    .dom-page-content {
+      overflow: hidden;
     }
   }
 }

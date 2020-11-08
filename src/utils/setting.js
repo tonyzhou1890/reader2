@@ -27,11 +27,15 @@ export const bookSetting = {
   renderTypes: [ // 可选渲染方式
     {
       value: 'canvas',
-      label: 'canvas'
+      label: '图片'
     },
     {
       value: 'svg',
-      label: 'svg'
+      label: '矢量图'
+    },
+    {
+      value: 'dom',
+      label: 'HTML'
     }
   ],
   fontFamilies: [ // 可选字体
