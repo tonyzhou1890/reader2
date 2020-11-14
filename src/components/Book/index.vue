@@ -86,7 +86,8 @@
             class="poa dom-page-content"
             :style="{
               width: _pageSize.dom[0] + 'px',
-              height: _pageSize.dom[1] + 'px'
+              height: _pageSize.dom[1] + 'px',
+              lineHeight: lineHeight
             }"
           ></div>
         </div>
@@ -134,7 +135,8 @@
             class="poa dom-page-content"
             :style="{
               width: _pageSize.dom[0] + 'px',
-              height: _pageSize.dom[1] + 'px'
+              height: _pageSize.dom[1] + 'px',
+              lineHeight: lineHeight
             }"
           ></div>
         </div>
@@ -467,6 +469,10 @@ export default {
     // 分页
     textToPage(measure) {
       if (!this.ctxOneText) return
+      // 如果文本已经改变，清空视图--在设置 ctx 样式前清空，因为清空画布会影响 ctx
+      if (this.text !== this._bookData.cacheText) {
+        this.clearView()
+      }
       this.setTextCtx(this.ctxOneText)
       this.loading = true
       this.loadingText = '分页中'
@@ -665,6 +671,7 @@ export default {
           renderParam.el = two ? this.$refs.domPageTwoText : this.$refs.domPageOneText
           renderParam.fontFamily = this.fontFamily
           renderParam.color = this.color
+          renderParam.lineHeight = this.lineHeight
           // 绘制页面
           renderDomPage(renderParam)
         }
@@ -1073,6 +1080,24 @@ export default {
           background-color: ${this.highlightBgc};
         }
       `
+    },
+    // 清除视图
+    clearView() {
+      if (this.$refs.pageOneBgc) {
+        this.$refs.pageOneBgc.width = this._pageSize[0]
+        this.$refs.pageOneText.width = this._pageSize[0]
+        this.$refs.pageTwoBgc.width = this._pageSize[0]
+        this.$refs.pageOneText.width = this._pageSize[0]
+
+        while (this.$refs.svgPageOneText.lastChild) {
+          this.$refs.svgPageOneText.removeChild(this.$refs.svgPageOneText.lastChild)
+        }
+        while (this.$refs.svgPageTwoText.lastChild) {
+          this.$refs.svgPageTwoText.removeChild(this.$refs.svgPageTwoText.lastChild)
+        }
+        this.$refs.domPageOneText.innerHTML = ''
+        this.$refs.domPageTwoText.innerHTML = ''
+      }
     }
   }
 }

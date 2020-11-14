@@ -187,6 +187,27 @@ export function renderSvgPage(param) {
   const fragment = document.createDocumentFragment()
   let text = null
   let textContent = ''
+  // 绘制页眉
+  let position = []
+  let _fontSize = param.full ? 12 : param.fontSize * 3 / 4
+  if (_fontSize > param.paddingTop) {
+    _fontSize = param.paddingTop * 3 / 4
+  }
+  if (param.headerText) {
+    position = [
+      param.headerTextAlign === 'right' ? param.width - param.paddingLeft : param.paddingLeft,
+      param.paddingTop - (param.paddingTop - _fontSize) / 2
+    ]
+    text = document.createElementNS('http://www.w3.org/2000/svg', 'text')
+    text.textContent = param.headerText
+    text.style.fontSize = `${_fontSize}px`
+    text.style.fontFamily = `${bookSetting.fontFamily}`
+    text.style.fill = `gray`
+    text.setAttribute('x', position[0])
+    text.setAttribute('y', position[1])
+    text.setAttribute('text-anchor', param.headerTextAlign === 'right' ? 'end' : 'start')
+    fragment.appendChild(text)
+  }
   // 绘制内容
   param.rows.map((item, row) => {
     textContent = ''
@@ -206,11 +227,7 @@ export function renderSvgPage(param) {
     }
   })
   // 绘制页脚
-  let _fontSize = param.full ? 12 : param.fontSize * 3 / 4
-  if (_fontSize > param.paddingTop) {
-    _fontSize = param.paddingTop * 3 / 4
-  }
-  let position = [
+  position = [
     param.width / 2,
     param.height - (param.paddingTop - _fontSize) / 2
   ]
@@ -223,22 +240,6 @@ export function renderSvgPage(param) {
   text.setAttribute('y', position[1])
   text.setAttribute('text-anchor', 'middle')
   fragment.appendChild(text)
-  // 绘制页眉
-  if (param.headerText) {
-    position = [
-      param.headerTextAlign === 'right' ? param.width - param.paddingLeft : param.paddingLeft,
-      param.paddingTop - (param.paddingTop - _fontSize) / 2
-    ]
-    text = document.createElementNS('http://www.w3.org/2000/svg', 'text')
-    text.textContent = param.headerText
-    text.style.fontSize = `${_fontSize}px`
-    text.style.fontFamily = `${bookSetting.fontFamily}`
-    text.style.fill = `gray`
-    text.setAttribute('x', position[0])
-    text.setAttribute('y', position[1])
-    text.setAttribute('text-anchor', param.headerTextAlign === 'right' ? 'end' : 'start')
-    fragment.appendChild(text)
-  }
 
   while (param.el.lastChild) {
     param.el.removeChild(param.el.lastChild)
@@ -275,9 +276,35 @@ export function renderSvgPage(param) {
  */
 export function renderDomPage(param) {
   const s = Date.now()
+  const offset = (param.lineHeight - 1) * param.fontSize / 2
   const fragment = document.createDocumentFragment()
   let text = null
   let textContent = ''
+  // 绘制页眉
+  let position = []
+  let _fontSize = param.full ? 12 : param.fontSize * 3 / 4
+  if (_fontSize > param.paddingTop) {
+    _fontSize = param.paddingTop * 3 / 4
+  }
+  if (param.headerText) {
+    position = [
+      param.headerTextAlign === 'right' ? param.width - param.paddingLeft : param.paddingLeft,
+      (param.paddingTop - _fontSize) / 2 - (param.lineHeight - 1) * _fontSize / 2
+    ]
+    text = document.createElement('span')
+    text.textContent = param.headerText
+    text.style.fontSize = `${_fontSize}px`
+    text.style.fontFamily = `${bookSetting.fontFamily}`
+    text.style.color = `gray`
+    text.style.whiteSpace = 'nowrap'
+    text.style.position = 'absolute'
+    text.style.left = `${position[0]}px`
+    text.style.top = `${position[1]}px`
+    if (param.headerTextAlign === 'right') {
+      text.style.transform = 'translateX(-100%)'
+    }
+    fragment.appendChild(text)
+  }
   // 绘制内容
   param.rows.map((item, row) => {
     textContent = ''
@@ -292,20 +319,16 @@ export function renderDomPage(param) {
       text.style.color = `${param.color}`
       text.style.position = 'absolute'
       text.style.left = `${item.charsSpace[0]}px`
-      text.style.top = `${item.charsSpace[1]}px`
+      text.style.top = `${item.charsSpace[1] - offset}px`
       text.style.letterSpacing = `${item.letterSpacing}px`
       text.style.whiteSpace = 'pre'
       fragment.appendChild(text)
     }
   })
   // 绘制页脚
-  let _fontSize = param.full ? 12 : param.fontSize * 3 / 4
-  if (_fontSize > param.paddingTop) {
-    _fontSize = param.paddingTop * 3 / 4
-  }
-  let position = [
+  position = [
     param.width / 2,
-    param.height - (param.paddingTop - _fontSize) / 2 - _fontSize
+    param.height - (param.paddingTop - _fontSize) / 2 - _fontSize - (param.lineHeight - 1) * _fontSize / 2
   ]
   text = document.createElement('span')
   text.textContent = param.footerText
@@ -317,25 +340,6 @@ export function renderDomPage(param) {
   text.style.top = `${position[1]}px`
   text.style.transform = 'translateX(-50%)'
   fragment.appendChild(text)
-  // 绘制页眉
-  if (param.headerText) {
-    position = [
-      param.headerTextAlign === 'right' ? param.width - param.paddingLeft : param.paddingLeft,
-      (param.paddingTop - _fontSize) / 2
-    ]
-    text = document.createElement('span')
-    text.textContent = param.headerText
-    text.style.fontSize = `${_fontSize}px`
-    text.style.fontFamily = `${bookSetting.fontFamily}`
-    text.style.color = `gray`
-    text.style.position = 'absolute'
-    text.style.left = `${position[0]}px`
-    text.style.top = `${position[1]}px`
-    if (param.headerTextAlign === 'right') {
-      text.style.transform = 'translateX(-100%)'
-    }
-    fragment.appendChild(text)
-  }
 
   while (param.el.lastChild) {
     param.el.removeChild(param.el.lastChild)

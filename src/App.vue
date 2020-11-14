@@ -34,8 +34,10 @@
         slot-scope="menuProps"
         @showMenu="() => toggleMenu(true)"
         @closeMenu="() => toggleMenu(false)"
+        @closeBook="() => closeBook()"
         :show="showMenu"
         :full="menuProps.full"
+        :type="type"
       >
         <!-- 设置 -->
         <template
@@ -86,6 +88,17 @@
             @jumpPage="handleJumpPage"
           ></ChapterList>
         </template>
+        <!-- 书籍信息 -->
+        <template
+          slot="info"
+          slot-scope="props">
+          <Info
+            :title="title"
+            :number="text.length"
+            :activeMenu="props.activeMenu"
+            @close="() => toggleMenu(false)"
+          ></Info>
+        </template>
       </Menu>
     </Book>
     <local
@@ -102,6 +115,7 @@ import Setting from '@/components/Setting'
 import JumpPage from '@/components/JumpPage'
 import Search from '@/components/Search'
 import ChapterList from '@/components/ChapterList'
+import Info from './components/Info'
 import Local from './components/Local'
 import Book from './components/Book'
 import Menu from './components/Menu'
@@ -129,6 +143,7 @@ export default {
     JumpPage,
     Search,
     ChapterList,
+    Info,
     Local,
     Book,
     Menu,
@@ -435,6 +450,21 @@ export default {
     toggleActionBar(e) {
       this.showActionBar = e.show
       this.actionBarPosition = e.position || this.actionBarPosition
+    },
+    // 关闭当前书籍
+    closeBook() {
+      if (this.type !== 'local') {
+        this.$message.info('只有本地模式才能关闭书籍')
+        return
+      }
+      this.showLocal = true
+      this.text = bookSetting.title
+      this.title = bookSetting.title
+      // this.total = 0
+      // this.page = 1
+      // this.percent = null
+      // this.frontCoverPath = ''
+      // this.backCoverPath = ''
     }
   }
 }

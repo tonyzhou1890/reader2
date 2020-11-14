@@ -1,23 +1,25 @@
 <template>
-  <div :class="`${show ? 'show' : ''} ${full ? 'full-screen' : ''} menu-wrapper`">
+  <div
+    :class="`${show ? 'show' : ''} ${full ? 'full-screen' : ''} menu-wrapper`"
+  >
     <!-- 遮罩层 -->
-    <div
-      class="menu-cover"
-      :class="full ? '' : 'not-full-screen'"
-    ></div>
+    <div class="menu-cover" :class="full ? '' : 'not-full-screen'"></div>
     <!-- 侧边栏按钮 -->
     <div v-show="!full" class="sidebar">
       <div
         v-for="(item, index) in menuItems"
-        :key="index"
         class="menu-item"
-        :class="[active === item.key && show ? 'active' : '', show ? 'show' : '']"
+        :key="index"
+        :class="[
+          active === item.key && show ? 'active' : '',
+          show ? 'show' : '',
+        ]"
         @click="() => showMenu(item.key)"
       >
         <span class="menu-icon" :title="item.text">
           <svg-icon :icon-class="item.icon"></svg-icon>
         </span>
-        <span v-show="!show" >{{item.text}}</span>
+        <span v-show="!show">{{ item.text }}</span>
       </div>
     </div>
     <!-- 菜单内容 -->
@@ -65,11 +67,21 @@ export default {
     full: {
       type: Boolean,
       default: false
+    },
+    type: {
+      type: String,
+      default: ''
     }
   },
   data() {
     return {
-      menuItems: [
+
+      active: 'setting'
+    }
+  },
+  computed: {
+    menuItems() {
+      let temp = [
         {
           key: 'setting',
           icon: 'setting',
@@ -89,14 +101,28 @@ export default {
           key: 'chapterList',
           icon: 'chapter',
           text: '目录'
+        },
+        {
+          key: 'info',
+          icon: 'info',
+          text: '书籍'
         }
-      ],
-      active: 'setting'
+      ]
+      if (this.type === 'local') {
+        temp.push({
+          key: 'close',
+          icon: 'close',
+          text: '关闭'
+        })
+      }
+      return temp
     }
   },
   methods: {
     showMenu(which) {
-      if (which !== this.active || !this.show) {
+      if (which === 'close') {
+        this.$emit('closeBook')
+      } else if (which !== this.active || !this.show) {
         this.$emit('showMenu')
         this.active = which
       } else {
@@ -125,7 +151,7 @@ export default {
 </script>
 
 <style lang="less" scoped>
-@import url('~@/styles/variables.less');
+@import url("~@/styles/variables.less");
 .full() {
   width: 100%;
   height: 100%;
@@ -140,13 +166,13 @@ export default {
   &.show {
     width: 100%;
   }
-  transition: all .3s;
+  transition: all 0.3s;
   .menu-cover {
     .full;
     position: absolute;
-    background-color: rgba(0, 0, 0, .3);
+    background-color: rgba(0, 0, 0, 0.3);
     &.not-full-screen {
-      width: calc(~'100% - 20px');
+      width: calc(~"100% - 20px");
       left: 20px;
     }
   }
@@ -166,7 +192,7 @@ export default {
       background-color: orange;
       color: #333;
       margin-bottom: 3px;
-      transition: all .3s;
+      transition: all 0.3s;
       > span {
         display: inline-block;
       }
@@ -186,7 +212,7 @@ export default {
     }
   }
   .menu-content {
-    width: calc(~'100% - 20px');
+    width: calc(~"100% - 20px");
     height: 100%;
     position: absolute;
     top: 0;
