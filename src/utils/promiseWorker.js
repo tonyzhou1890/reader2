@@ -1,7 +1,7 @@
 import Worker from '@/utils/utils.worker'
 import { appSetting } from '@/utils/setting'
 
-const workerNum = appSetting.threads // 线程数量
+const workerNum = window.navigator.hardwareConcurrency || appSetting.threads // 线程数量
 const quene = new Map()
 const waiting = []
 const workers = new Array(workerNum).fill(null).map((_, index) => {

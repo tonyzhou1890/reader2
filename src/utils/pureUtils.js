@@ -84,7 +84,7 @@ export function textToPage(param) {
       rows[row].completed = false
       endRow(i)
     } else {
-      tempRowWidth = rowWidth + _params.measures[curChar].width
+      tempRowWidth = rowWidth + _params.measures[curChar]
       /**
        * 普通字符（包括其余各种符号）处理
        * 1 有剩余空间(包括0)
@@ -117,7 +117,10 @@ export function textToPage(param) {
           (backCharInfo = validPostBack(i))
         ) {
           backCharInfo.prevRow.endIndex = backCharInfo.endIndex
-          backCharInfo.prevRow.chars.splice(backCharInfo.endIndex - backCharInfo.prevRow.startIndex + 1)
+          // 修正上一页最后一个字符位置
+          if (backCharInfo.prevPage) {
+            backCharInfo.prevPage.endIndex = backCharInfo.endIndex
+          }
           i = backCharInfo.endIndex
         } else if ( // 行尾前置符号
           prePunctuation.includes(curChar) &&
@@ -125,7 +128,7 @@ export function textToPage(param) {
           _params.text[i - 1] !== '\r' &&
           _params.text[i - 1] !== '\n' &&
           !bookSetting.englishChars.includes(_params.text[i - 1]) &&
-          _params.width - tempRowWidth < _params.measures[_params.text[i - 1]].width &&
+          _params.width - tempRowWidth < _params.measures[_params.text[i - 1]] &&
           (backCharInfo = validPreBack(i))
         ) {
           rowChars.splice(backCharInfo.endIndex - rows[row].startIndex + 1)
@@ -136,7 +139,7 @@ export function textToPage(param) {
           _params.text[i - 1] &&
           _params.text[i + 1] &&
           bookSetting.englishChars.includes(_params.text[i + 1]) &&
-          _params.width - tempRowWidth < _params.measures[_params.text[i + 1]].width &&
+          _params.width - tempRowWidth < _params.measures[_params.text[i + 1]] &&
           (backCharInfo = validEnglishPreBack(i))
         ) {
           rowChars.splice(backCharInfo.endIndex - rows[row].startIndex + 1)
@@ -183,7 +186,8 @@ export function textToPage(param) {
    */
   function endRow(index) {
     rows[row].endIndex = index
-    rows[row].chars = rowChars
+    // rows[row].chars = rowChars
+    rows[row].empty = rowChars.join('').trim().length === 0
     row++
     rowChars = []
     rowWidth = 0
@@ -209,8 +213,10 @@ export function textToPage(param) {
    */
   function validPostBack(i) {
     let prevRow = null
+    let prevPage = null
     // 上一行在前页
     if (!row) {
+      prevPage = pages[page - 1]
       prevRow = pages[page - 1].rows[_params.rowNum - 1]
     } else {
       // 上一行不在前页
@@ -230,6 +236,7 @@ export function textToPage(param) {
     for (index = i - 1; index > start; index--) {
       if (!postPunctuation.includes(_params.text[index])) {
         return {
+          prevPage,
           prevRow,
           endIndex: index - 1
         }
@@ -331,7 +338,7 @@ export function findSubArray(parentArray = [], subArray = [], startIndex = 0, nu
  * 数组浅拷贝
  * @param {Array} arr 原数组
  * @param {Number} startIndex 开始索引
- * @param {Number} endIndex 结束索引
+ * @param {Number} endIndex 结束索引，包含关系
  */
 export function arrayCopy(arr = [], startIndex = 0, endIndex = 0) {
   let _len = arr.length
@@ -415,7 +422,6 @@ export function splitChapter(param) {
  * 返回值：{
  *    index: 1, 行开始字符索引
  *    str: 'ddd', 标题字符串
- *    strArray: ['a'] 标题行
  * }
  */
 export function checkChapter(param) {
@@ -433,8 +439,7 @@ export function checkChapter(param) {
     )) {
       return {
         index,
-        str,
-        strArray
+        str
       }
     } else {
       return false
@@ -734,6 +739,9 @@ export function calcHighlightInPage(param) {
       // 结束行
     } else if (i === endRowIndex) {
       startPosition = row.chars[0].position
+      if (!row.chars[endChar - row.startIndex]) {
+        console.log(row, endChar)
+      }
       endPosition = row.chars[endChar - row.startIndex].position
       // 普通行
     } else {

@@ -19,45 +19,31 @@ import { textToPage as _textToPage, findSubArray, arrayCopy } from '@/utils/pure
  */
 export function measureChars(param) {
   let s = Date.now()
-  // 将文本转成数组，防止四字节字符问题
-  let textArray = Array.from(param.text)
-  // 加上额外需要测量的字符
-  let tempArr = textArray.concat([bookSetting.hyphen, '阅'])
-  console.log('  tempArr:', Date.now() - s)
-  // 第一种，先去重，然后测量
-  // // 去重
-  // tempArr = [...new Set(tempArr)]
-  // console.log('  Set:', Date.now() - s)
-  // let measures = {}
-  // let len = tempArr.length
-  // // for 循环效率比 map 之类的遍历器高
-  // for (let i = 0; i < len; i++) {
-  //   measures[tempArr[i]] = {
-  //     width: param.ctx.measureText(tempArr[i]).width
-  //   }
-  // }
-  // 第二种，直接遍历测量--这种效率更高
-  let len = tempArr.length
   let measures = {}
-  for (let i = 0; i < len; i++) {
-    if (!measures[tempArr[i]]) {
-      measures[tempArr[i]] = {
-        width: param.ctx.measureText(tempArr[i]).width
-      }
+  // 有两个预设的字符
+  ;[bookSetting.hyphen, '阅'].map(item => {
+    measures[item] = param.ctx.measureText(item).width
+  })
+  // 将文本转成数组，防止四字节字符问题
+  let textArray = []
+  // 测量字符宽度，填充文本数组
+  for (let item of param.text) {
+    textArray.push(item)
+    if (!measures[item]) {
+      measures[item] = param.ctx.measureText(item).width
     }
   }
-  // console.log('  Set:', Date.now() - s)
   // tab符、换行符特殊处理
   if (measures['\t']) {
-    measures['\t'].width = measures['阅'].width * 2
+    measures['\t'] = measures['阅'] * 2
   }
   if (measures['\r']) {
-    measures['\r'].width = 0
+    measures['\r'] = 0
   }
   if (measures['\n']) {
-    measures['\n'].width = 0
+    measures['\n'] = 0
   }
-  console.log('measureChars:', Date.now() - s)
+  console.log('measureChars + textArray:', Date.now() - s)
   return {
     textArray,
     measures
@@ -369,7 +355,8 @@ export function renderDomPage(param) {
  *      'a': {
  *        width: 12
  *      }
- *    }
+ *    },
+ *    textArray: ['a', 'b']
  * }
  * @returns {Array}
  * 返回值：[
@@ -390,15 +377,11 @@ export function renderDomPage(param) {
  * ]
  */
 export function layout(param) {
-  // 如果已经计算过了，直接返回
-  if (param.rows[0] && param.rows[0].calculated) return param.rows
-
   const s = Date.now()
 
   const _params = {...param}
   _params.lineHeight = param.fontSize * param.lineHeight
   _params.lineWidth = param.width - param.paddingLeft * 2
-  _params.rows = JSON.parse(JSON.stringify(_params.rows))
   _params.rows.map((item, row) => {
     let letterSpacing = 0
     let tempRowWidth = 0
@@ -409,11 +392,16 @@ export function layout(param) {
       _params.paddingLeft + _params.lineWidth,
       _params.paddingTop + (row + 1) * _params.lineHeight
     ]
+    // 获取本行需要的字符
+    item.chars = arrayCopy(_params.textArray, item.startIndex, item.endIndex)
+    if (item.append) {
+      item.chars.push(bookSetting.hyphen)
+    }
     // 如果是完整的一行，需要计算字间距，
     if (item.completed) {
       let charsWidth = 0
       item.chars.map(chara => {
-        charsWidth += _params.measures[chara].width
+        charsWidth += _params.measures[chara]
       })
       letterSpacing = (_params.lineWidth - charsWidth) / (item.chars.length - 1)
     }
@@ -422,7 +410,7 @@ export function layout(param) {
       let position = [
         _params.paddingLeft + tempRowWidth,
         item.rowSpace[1],
-        _params.paddingLeft + tempRowWidth + _params.measures[chara].width,
+        _params.paddingLeft + tempRowWidth + _params.measures[chara],
         item.rowSpace[1] + _params.fontSize
       ]
       // 直接将原来的字符替换成对象
@@ -431,19 +419,19 @@ export function layout(param) {
         position
       }
       // 更新 tempRowWidth
-      tempRowWidth += _params.measures[chara].width + letterSpacing
+      tempRowWidth += _params.measures[chara] + letterSpacing
     })
     // 计算 charsSpace
-    item.charsSpace = [
-      item.rowSpace[0],
-      item.rowSpace[1],
-      item.chars[item.chars.length - 1].position[2],
-      item.chars[item.chars.length - 1].position[3]
-    ]
+    if (item.chars[item.chars.length - 1]) {
+      item.charsSpace = [
+        item.rowSpace[0],
+        item.rowSpace[1],
+        item.chars[item.chars.length - 1].position[2],
+        item.chars[item.chars.length - 1].position[3]
+      ]
+    }
     // letterSpacing 也加到对象中
     item.letterSpacing = letterSpacing
-    // 标记此行已经计算过
-    item.calculated = true
   })
   console.log('layout:', Date.now() - s)
 

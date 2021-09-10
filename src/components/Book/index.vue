@@ -412,13 +412,18 @@ export default {
     },
     // 监听 page
     page: {
-      handler() {
+      handler(newPage, oldPage) {
         // 重绘文字前，清除文字选择
         this.clearSelection()
         this.renderPage()
         // 如果是双页，渲染第二页
         if (!this.single) {
           this.renderPage('two')
+        }
+        // 清空之前页面文字的布局信息，减少内存占用
+        this.clearLayout(oldPage)
+        if (!this.single) {
+          this.clearLayout(oldPage + 1)
         }
       }
     },
@@ -556,7 +561,8 @@ export default {
               console.log('textToPage:', Date.now() - s)
               let tempRes = res.map(item => item.result)
               // 删除空页
-              tempRes = tempRes.flat().filter(page => page.rows.some(row => row.chars.join('').trim().length))
+              // tempRes = tempRes.flat().filter(page => page.rows.some(row => row.chars.join('').trim().length))
+              tempRes = tempRes.flat().filter(page => page.rows.some(row => !row.empty))
               // 重新设置页码
               tempRes.map((item, index) => {
                 item.page = index
@@ -613,11 +619,10 @@ export default {
         textCtx = this.ctxTwoText
       }
       const tempPageInfo = this._bookData.pages[page]
-      // 如果计算过每个文字的位置，则先计算
+      // 计算文字位置
       if (
         tempPageInfo &&
-        tempPageInfo.rows.length &&
-        !tempPageInfo.rows[0].calculated
+        tempPageInfo.rows.length
       ) {
         const param = {
           rows: tempPageInfo.rows,
@@ -627,7 +632,8 @@ export default {
           paddingTop: this.pagePadding[1],
           fontSize: this.fontSize,
           lineHeight: this.lineHeight,
-          measures: this._bookData.measures
+          measures: this._bookData.measures,
+          textArray: this._bookData.textArray
         }
         this._bookData.pages[page].rows = layout(param)
       }
@@ -1040,6 +1046,17 @@ export default {
     clearSelection() {
       this.selection = JSON.parse(JSON.stringify(initSelection))
       this.$emit('showActionBar', { show: false, position: [0, 0] })
+    },
+    // 清除指定页面的文字布局信息
+    clearLayout(oldPage) {
+      // 当前页面不处理
+      if (oldPage === this.page || (!this.single && oldPage === this.page + 1)) return
+      const tempPageInfo = this._bookData.pages[oldPage]
+      if (tempPageInfo && tempPageInfo.rows && tempPageInfo.rows.length) {
+        tempPageInfo.rows.map(row => {
+          row.chars = null
+        })
+      }
     },
     // 按钮触发的操作
     trigger(key) {
