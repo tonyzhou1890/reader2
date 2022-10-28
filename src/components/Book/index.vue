@@ -613,10 +613,8 @@ export default {
     // 绘制页面，不仅仅处理内容 canvas / svg 的绘制，还处理封面和封底
     renderPage(two) {
       let page = this.page
-      let textCtx = this.ctxOneText
       if (two) {
         page += 1
-        textCtx = this.ctxTwoText
       }
       const tempPageInfo = this._bookData.pages[page]
       // 计算文字位置
@@ -637,23 +635,38 @@ export default {
         }
         this._bookData.pages[page].rows = layout(param)
       }
-      // canvas 渲染
-      if (this.render === 'canvas') {
-        // 首先清屏
-        // 采用这种方式清屏，是为了一并解决纸张大小变化的情况
-        textCtx.canvas.width = this.pageSize[0] * this.DPR
-        textCtx.canvas.height = this.pageSize[1] * this.DPR
-        // 画布缩放
-        textCtx.scale(this.DPR, this.DPR)
-        // 重设画布大小后，绘图上下文会重置
-        this.setTextCtx(textCtx)
+      // 清屏
+      switch (this.render) {
+        case 'canvas':
+        {
+          let textCtx = two ? this.ctxTwoText : this.ctxOneText
+          // 首先清屏
+          // 采用这种方式清屏，是为了一并解决纸张大小变化的情况
+          textCtx.canvas.width = this.pageSize[0] * this.DPR
+          textCtx.canvas.height = this.pageSize[1] * this.DPR
+          // 画布缩放
+          textCtx.scale(this.DPR, this.DPR)
+          // 重设画布大小后，绘图上下文会重置
+          this.setTextCtx(textCtx)
+          break
+        }
+        case 'svg':
+        {
+          let el = two ? this.$refs.svgPageTwoText : this.$refs.svgPageOneText
+          el.innerHTML = ''
+          break
+        }
+        case 'dom':
+          let el = two ? this.$refs.domPageTwoText : this.$refs.domPageOneText
+          el.innerHTML = ''
+          break
       }
+      // 渲染
       if (tempPageInfo) {
         let renderParam = {
           rows: tempPageInfo.rows,
           width: this.pageSize[0],
           height: this.pageSize[1],
-          ctx: textCtx,
           paddingLeft: this.pagePadding[0],
           paddingTop: this.pagePadding[1],
           full: this.full,
@@ -663,23 +676,26 @@ export default {
           footerText: `${page + 1}/${this._bookData.pages.length}`
         }
         // canvas
-        if (this.render === 'canvas') {
-          renderParam.ctx = textCtx
-          // 绘制页面
-          renderPage(renderParam)
-        } else if (this.render === 'svg') { // svg
-          renderParam.el = two ? this.$refs.svgPageTwoText : this.$refs.svgPageOneText
-          renderParam.fontFamily = this.fontFamily
-          renderParam.color = this.color
-          // 绘制页面
-          renderSvgPage(renderParam)
-        } else { // dom
-          renderParam.el = two ? this.$refs.domPageTwoText : this.$refs.domPageOneText
-          renderParam.fontFamily = this.fontFamily
-          renderParam.color = this.color
-          renderParam.lineHeight = this.lineHeight
-          // 绘制页面
-          renderDomPage(renderParam)
+        switch (this.render) {
+          case 'canvas':
+            renderParam.ctx = two ? this.ctxTwoText : this.ctxOneText
+            renderPage(renderParam)
+            break
+          case 'svg':
+            renderParam.el = two ? this.$refs.svgPageTwoText : this.$refs.svgPageOneText
+            renderParam.fontFamily = this.fontFamily
+            renderParam.color = this.color
+            // 绘制页面
+            renderSvgPage(renderParam)
+            break
+          case 'dom':
+            renderParam.el = two ? this.$refs.domPageTwoText : this.$refs.domPageOneText
+            renderParam.fontFamily = this.fontFamily
+            renderParam.color = this.color
+            renderParam.lineHeight = this.lineHeight
+            // 绘制页面
+            renderDomPage(renderParam)
+            break
         }
       }
     },

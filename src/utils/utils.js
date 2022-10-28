@@ -227,9 +227,10 @@ export function renderSvgPage(param) {
   text.setAttribute('text-anchor', 'middle')
   fragment.appendChild(text)
 
-  while (param.el.lastChild) {
-    param.el.removeChild(param.el.lastChild)
-  }
+  // 清屏工作放到渲染之前
+  // while (param.el.lastChild) {
+  //   param.el.removeChild(param.el.lastChild)
+  // }
   param.el.appendChild(fragment)
 
   console.log('renderSvgPage:', Date.now() - s)
@@ -327,9 +328,10 @@ export function renderDomPage(param) {
   text.style.transform = 'translateX(-50%)'
   fragment.appendChild(text)
 
-  while (param.el.lastChild) {
-    param.el.removeChild(param.el.lastChild)
-  }
+  // 清屏工作放到渲染之前
+  // while (param.el.lastChild) {
+  //   param.el.removeChild(param.el.lastChild)
+  // }
   param.el.appendChild(fragment)
 
   console.log('renderDomPage:', Date.now() - s)
